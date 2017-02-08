@@ -1,6 +1,7 @@
 package xylophone
 
 import language.dynamics
+import scala.util.{Failure, Success}
 
 case class Xml(elements: Seq[Xml.Node]) extends Dynamic {
   
@@ -8,16 +9,25 @@ case class Xml(elements: Seq[Xml.Node]) extends Dynamic {
   
   def selectDynamic(tag: String)(implicit namespace: Namespace): Xml = {
     val TagName = Name(namespace, tag)
-    Xml(elements.collect { case tag@Tag(TagName, _, _) => tag })
+    Xml(elements.collect { case tag@Tag(TagName, _, _) => tag.children }.flatten)
   }
   
-  def apply(index: Int = 0): Node = elements(index)
+//  def apply(index: Int = 0): Node = elements(index)
+
+  def applyDynamic(name: String)(index: Int): Node = elements(index)
 
   override def toString(): String = elements.mkString("")
 
 }
 
 object Xml {
+
+  def parse(str: String)(implicit parser: Parser[String, Xml]): Xml = {
+    parser.parse(str) match {
+      case Success(parsedXml) => parsedXml
+      case Failure(_) => throw ParseException(str)
+    }
+  }
 
   object Namespace {
     implicit val defaultNamespace: Namespace = Namespace(None)
@@ -66,7 +76,7 @@ object Xml {
     }
 
     override def toString(): String = {
-      val attsString = if(attributes.size > 0) attributes.map { case (k, v) =>
+      val attsString = if(attributes.nonEmpty) attributes.map { case (k, v) =>
         s"""$k="$v""""
       }.mkString(" ", " ", "") else ""
       

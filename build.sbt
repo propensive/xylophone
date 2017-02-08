@@ -14,6 +14,9 @@ lazy val tests = project
   .settings(noPublishSettings: _*)
   .settings(moduleName := "xylophone-tests")
   .settings(quasiQuotesDependencies)
+  .settings(libraryDependencies ++= Seq(
+    "com.propensive" %% "rapture-test" % "2.0.0-M8" % "test"
+  ))
   .dependsOn(core)
 
 lazy val buildSettings = Seq(
@@ -21,7 +24,29 @@ lazy val buildSettings = Seq(
   scalaVersion := "2.12.1",
   name := "xylophone",
   version := "1.0.0",
-  scalacOptions ++= Seq("-deprecation", "-feature", "-Ywarn-value-discard", "-Ywarn-dead-code", "-Ywarn-nullary-unit", "-Ywarn-numeric-widen", "-Ywarn-inaccessible", "-Ywarn-adapted-args"),
+  scalacOptions ++= Seq(
+    "-deprecation", // Emit warning and location for usages of deprecated APIs.
+    "-feature", // Emit warning and location for usages of features that should be imported explicitly.
+    "-Ywarn-value-discard", // Warn wen value was discard
+    "-Ywarn-dead-code",  // Warn when dead code is identified.
+    "-Ywarn-nullary-unit",
+    "-Ywarn-numeric-widen", // Warn when numerics are widened.
+    "-Ywarn-inaccessible",  // Warn about inaccessible types in method signatures.
+    "-Ywarn-adapted-args",
+    "-unchecked", // Enable additional warnings where generated code depends on assumptions.
+    "-Xfatal-warnings", // Fail the compilation if there are any warnings.
+    "-Ywarn-unused-import", //Warn when imports are unused
+    "-Ywarn-unused",  // Warn when local and private vals, vars, defs, and types are unused.
+    "-Yno-adapted-args", // Warn if an argument list is modified to match the receiver.
+    "-Ywarn-nullary-override", // Warn when non-nullary overrides nullary, e.g. def foo() over def foo.
+    "-Xlint:-stars-align,_", // Enable recommended additional warnings.
+    "-Xlint:missing-interpolator", // A string literal appears to be missing an interpolator id.
+    "-explaintypes", //Explain type errors in more detail.
+    "-encoding",
+    "UTF-8",
+    "-Xexperimental",
+    "-Xfuture" // Turn on future language features and guard against a few deprecated features around Futures.
+  ),
   crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1"),
   scmInfo := Some(ScmInfo(url("https://github.com/propensive/xylophone"),
     "scm:git:git@github.com:propensive/xylophone.git"))
