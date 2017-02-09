@@ -1,12 +1,21 @@
 import com.typesafe.sbt.pgp.PgpKeys.publishSigned
 import ReleaseTransformations._
 
+val versions = new {
+  val rapture = "2.0.0-M8"
+  val scalaMacros = "2.1.0"
+  val macroCompat = "1.1.1"
+}
+
 lazy val core = project
   .in(file("core"))
   .settings(buildSettings: _*)
   .settings(publishSettings: _*)
   .settings(scalaMacroDependencies: _*)
   .settings(moduleName := "xylophone")
+  .settings(libraryDependencies ++= Seq(
+    "com.propensive" %% "rapture-core" % versions.rapture
+  ))
 
 lazy val tests = project
   .in(file("tests"))
@@ -15,7 +24,7 @@ lazy val tests = project
   .settings(moduleName := "xylophone-tests")
   .settings(quasiQuotesDependencies)
   .settings(libraryDependencies ++= Seq(
-    "com.propensive" %% "rapture-test" % "2.0.0-M8" % "test"
+    "com.propensive" %% "rapture-test" % versions.rapture % "test"
   ))
   .dependsOn(core)
 
@@ -110,17 +119,17 @@ lazy val quasiQuotesDependencies: Seq[Setting[_]] =
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, scalaMajor)) if scalaMajor >= 11 => Seq()
       case Some((2, 10)) => Seq(
-        compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
-        "org.scalamacros" %% "quasiquotes" % "2.1.0" cross CrossVersion.binary
+        compilerPlugin("org.scalamacros" % "paradise" % versions.scalaMacros cross CrossVersion.full),
+        "org.scalamacros" %% "quasiquotes" % versions.scalaMacros cross CrossVersion.binary
       )
     }
   }
 
 lazy val scalaMacroDependencies: Seq[Setting[_]] = Seq(
-  libraryDependencies += "org.typelevel" %% "macro-compat" % "1.1.1",
+  libraryDependencies += "org.typelevel" %% "macro-compat" % versions.macroCompat,
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
-  libraryDependencies += compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
+  libraryDependencies += compilerPlugin("org.scalamacros" % "paradise" % versions.scalaMacros cross CrossVersion.full)
 )
 
 credentials ++= (for {

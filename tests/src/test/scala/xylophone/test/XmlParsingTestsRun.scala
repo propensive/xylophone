@@ -48,53 +48,78 @@ class XmlParsingTests(parser: Parser[String, Xml]) extends TestSuite {
     Xml.parse("<a><b>10</b><b>11</b></a>").toString()
   } returns "<a><b>10</b><b>11</b></a>"
 
-  //  //TODO: Need workaround it, since just plain text is not a valid xml
-  //  val `Xml parser should parse only string` = test {
-  //    Xml.parse("just some text").toString()
-  //  } returns "just some text" //
-  //
+  val `Xml parser should parse only string` = test {
+    Xml.parse("just some text").toString()
+  } returns "just some text"
+
+  val `Xml parser should parse empty tags` = test {
+    Xml.parse("<a></a>").toString()
+  } returns "<a></a>"
+
+
   //  //TODO: Need to add self closing mode?? or track it some how
   //  val `Xml parser should parse empty self enclosed tag` = test {
   //    Xml.parse("<a/>").toString()
   //  } returns "<a/>" //Found <a></a> but expected <a/>
   //
-  //  //TODO: Need workaround it, since just plain text is not a valid xml
-  //  val `Xml parser should parse strings with self closed tag` = test {
-  //    Xml.parse("just some text <ab/> yes").toString()
-  //  } returns "just some text <ab/> yes"
+
+  val `Xml parser should parse strings with self closed tag` = test {
+    Xml.parse("just some text <ab></ab> yes").toString()
+  } returns "just some text<ab></ab>yes"
 
   val `Xml API should be able to extract data by tag name` = test {
     Xml.parse(xmlSample).a.c.e.w.toString()
   } returns "<k><o>hahaha</o></k><k><o>seven days</o></k>"
 
   val `Xml API should be able to extract data from array/sequance by index` = test {
-    Xml.parse(xmlSample).a.c.e.w.k.o(0).toString
+    Xml.parse(xmlSample).a.c.e.w.k.o(0).toString()
   } returns "<o>hahaha</o>"
 
 
   val `Getting not existing tag should return an empty XML` = test {
-    Xml.parse("<a>hello</a>").abc
-  } returns Xml(Nil)
+    Xml.parse("<a>hello</a>").abc.toString()
+  } returns ""
 
 
   val `Parsing of invalid xml should lead to failure` = test {
-    Xml.parse("<a> wwww <b>").abc
+    Xml.parse("<a> wwww <b>")
   } throws ParseException("<a> wwww <b>")
 
   val `Parsing XML with attributes ` = test {
-    Xml.parse("""<abc a="11"><dd k="123" l="77"><a w="22">hello</a><a w="1">open</a></dd></abc>""").toString
+    Xml.parse("""<abc a="11"><dd k="123" l="77"><a w="22">hello</a><a w="1">open</a></dd></abc>""").toString()
   } returns """<abc a="11"><dd l="77" k="123"><a w="22">hello</a><a w="1">open</a></dd></abc>"""
 
   val `Parsing XML with attributes and namespaces` = test {
-    Xml.parse("""<z:Attachment rdf:about="#item_1" rdf:id="10">xxxxx</z:Attachment>""").toString
+    Xml.parse("""<z:Attachment rdf:about="#item_1" rdf:id="10">xxxxx</z:Attachment>""").toString()
   } returns """<z:Attachment rdf:id="10" rdf:about="#item_1">xxxxx</z:Attachment>"""
 
 
-  //TODO: Need to support xmlns
-//  val `Parsing XML with attributes and namespaces and xmlns` = test {
-//    Xml.parse("""<z:Attachment xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="#item_1"></z:Attachment>""").toString
-//  } returns """<z:Attachment xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="#item_1"></z:Attachment>"""
+  ////TODO: Need to support xmlns
+  //  val `Parsing XML with attributes and namespaces and xmlns` = test {
+  //    Xml.parse("""<z:Attachment xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="#item_1"></z:Attachment>""").toString
+  //  } returns """<z:Attachment xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" rdf:about="#item_1"></z:Attachment>"""
 
+
+  val `Parsing XML with encoding attribute` = test {
+    Xml.parse("""<?xml version="1.0" encoding="UTF-8"?><a>wwww</a>""").toString()
+  } returns "<a>wwww</a>"
+
+  val `Parsing XML with encoding attribute and some formatting` = test {
+    Xml.parse(
+      """<?xml
+        |version="1.0"
+        |encoding="UTF-8"
+        |?><a>wwww</a>""".stripMargin).toString()
+  } returns "<a>wwww</a>"
+//
+  val `Parsing XML with encoding attribute and only string/text` = test {
+    Xml.parse(
+      """<?xml
+        |version="1.0"
+        |encoding="UTF-8"
+        |?>
+        |wwww""".stripMargin).toString()
+  } returns "wwww"
 }
 
 
