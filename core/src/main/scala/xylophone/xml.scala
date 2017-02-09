@@ -3,24 +3,48 @@ package xylophone
 import language.dynamics
 import scala.util.{Failure, Success}
 
-case class Xml(elements: Seq[Xml.Node]) extends Dynamic {
+case class Xml(elements: Seq[Xml.Node], path: Xml.SeqPath) extends Dynamic {
   
   import Xml._
+   
+  def selectDynamic(tag: String)(implicit namespace: Namespace): Xml =
+    Xml(elements, Select(path, Name(namespace, tag)))
   
-  def selectDynamic(tag: String)(implicit namespace: Namespace): Xml = {
-    val TagName = Name(namespace, tag)
-    Xml(elements.collect { case tag@Tag(TagName, _, _) => tag.children }.flatten)
-  }
+  def apply(index: Int = 0): XmlNode =
+    XmlNode(elements, Index(path, index))
   
-//  def apply(index: Int = 0): Node = elements(index)
 
-  def applyDynamic(name: String)(index: Int): Node = elements(index)
+  def applyDynamic(name: String)(index: Int): XmlNode = XmlNode(elements, Index(path, index))
 
-  override def toString(): String = elements.mkString("")
 
+  override def toString(): String =
+    $normalize.map(_.string(Set())).mkString("")
+
+  def $normalize: Seq[Xml.Node] = Xml.normalize(elements, path)
+    
+}
+
+case class XmlNode(elements: Seq[Xml.Node], path: Xml.NodePath) extends Dynamic {
+  def apply(attribute: Symbol)(implicit namespace: Xml.Namespace): XmlAttribute =
+    XmlAttribute(this, Xml.Name(namespace, attribute.name))
+  
+  def selectDynamic(tag: String)(implicit namespace: Xml.Namespace): Xml =
+    Xml(elements, Xml.Select(path, Xml.Name(namespace, tag)))
+
+  def * : Xml = Xml(elements, Xml.All(path))
+
+  override def toString(): String = $normalize.map(_.string(Set())).mkString("")
+
+  def $normalize: Option[Xml.Node] = Xml.normalize(elements, path).headOption
+}
+
+case class XmlAttribute(xmlNode: XmlNode, attributeName: Xml.Name) {
+  def $normalize: Option[String] =
+    xmlNode.$normalize.headOption.to[Seq].flatMap(_.attribute(attributeName)).headOption
 }
 
 object Xml {
+
 
   def parse(str: String)(implicit parser: Parser[String, Xml]): Xml = {
     parser.parse(str) match {
@@ -29,76 +53,94 @@ object Xml {
     }
   }
 
+  def normalize(elements: Seq[Node], path: Path): Seq[Xml.Node] = path match {
+    case Root(xml) => xml
+    case Select(path, name) => elements.collect { case element@Element(`name`, _, _) => element }
+    case Index(path, index) => if(elements.length > index) List(elements(index)) else Nil
+    case All(path) => normalize(elements.headOption.to[Seq].flatMap(_.children), path)
+  }
+
+  sealed trait Path
+  sealed trait SeqPath extends Path
+  sealed trait NodePath extends Path
+
+  case class Root(xml: Seq[Node]) extends NodePath
+  case class Select(path: Path, name: Name) extends SeqPath
+  case class Index(path: SeqPath, index: Int) extends NodePath
+  case class All(path: NodePath) extends SeqPath
+
+
   object Namespace {
-    implicit val defaultNamespace: Namespace = Namespace(None)
+    val XmlnsNamespace = Namespace("xmlns", None)
   }
   
-  case class Namespace(namespace: Option[(String, String)]) {
-    
-    override def equals(that: Any): Boolean = that match {
-      case Namespace(ns) => ns.map(_._1) == namespace.map(_._1)
-      case _ => false
-    }
+  implicit object DefaultNamespace extends Namespace("", None) {
+    override def prefix(tag: String): String = tag
+  }
 
-    override def hashCode: Int = namespace.map(_._1).hashCode
+  case class Namespace(alias: String, namespace: Option[String]) {
+
+    def prefix(tag: String): String = s"$alias:$tag"
+
+    def xmlnsAttribute: Option[(Name, String)] = namespace.map { nsString =>
+      (Name(Namespace.XmlnsNamespace, alias), nsString)
+    }
   }
 
   case class Name(namespace: Namespace, name: String) {
-    override def toString(): String = namespace.namespace match {
-      case Some((ns, alias)) => s"$alias:$name"
-      case None => name
-    }
+    override def toString(): String = namespace.prefix(name)
   }
 
-  case class Attribute(name: Name, value: String)
+  sealed trait Node {
+    def attribute(name: Name): Option[String]
+    def children : Seq[Node]
 
-  sealed trait Node extends Dynamic {
-    def apply(attribute: Symbol)(implicit namespace: Namespace): Option[Attribute]
-    def selectDynamic(tag: String)(implicit namespace: Namespace): Xml
-    def * : Xml
+    def string(namespaces: Set[Namespace]): String
   }
 
   case class Text(text: String) extends Node {
-    def apply(attribute: Symbol)(implicit namespace: Namespace): Option[Attribute] = None
-    def * : Xml = Xml(Nil)
-    def selectDynamic(tag: String)(implicit namespace: Namespace): Xml = Xml(Nil)
+    def attribute(name: Name): Option[String] = None
+    def children : Seq[Node] = Nil
 
-    override def toString(): String = text
+    def string(namespaces: Set[Namespace]): String = text
   }
 
-  case class Tag(name: Name, attributes: Map[Name, String], children: Seq[Node]) extends Node {
-    def apply(attribute: Symbol)(implicit namespace: Namespace): Option[Attribute] = None
-    def * : Xml = Xml(children)
+  case class Element(name: Name, attributes: Map[Name, String], children: Seq[Node]) extends Node {
+    def attribute(name: Name): Option[String] = attributes.get(name)
     
-    def selectDynamic(tag: String)(implicit namespace: Namespace): Xml = {
-      val TagName = Name(namespace, tag)
-      Xml(children.collect { case tag@Tag(TagName, _, _) => tag })
-    }
+    def string(namespaces: Set[Namespace]): String = {
+      val (atts, nss) =
+        if(namespaces contains name.namespace) (attributes ++ name.namespace.xmlnsAttribute, namespaces)
+        else (attributes, namespaces)
 
-    override def toString(): String = {
-      val attsString = if(attributes.nonEmpty) attributes.map { case (k, v) =>
-        s"""$k="$v""""
+      val attsString = if(atts.size > 0) atts.map { 
+        case (name, value) => s"""$name="$value"""
       }.mkString(" ", " ", "") else ""
       
-      val content = children.mkString("")
+      val content = children.map { child => child.string(nss).mkString("") }
 
       s"<$name$attsString>$content</$name>"
     }
   }
 
   case class ProessingInstruction(target: String, content: String) extends Node {
-    def apply(attribute: Symbol)(implicit namespace: Namespace): Option[Attribute] = None
-    def * : Xml = Xml(Nil)
-    def selectDynamic(tag: String)(implicit namespace: Namespace): Xml = Xml(Nil)
+    def attribute(name: Name): Option[String] = None
+    def children : Seq[Node] = Nil
 
-    override def toString(): String = s"<! $target $content !>"
+    def string(namespaces: Set[Namespace]): String = s"<! $target $content !>"
+  }
+
+  case class Comment(content: String) extends Node {
+    def attribute(name: Name): Option[String] = None
+    def children : Seq[Node] = Nil
+
+    def string(namespaces: Set[Namespace]): String = s"<!--$content-->"
   }
 
   case class Entity(name: String) extends Node {
-    def apply(attribute: Symbol)(implicit namespace: Namespace): Option[Attribute] = None
-    def * : Xml = Xml(Nil)
-    def selectDynamic(tag: String)(implicit namespace: Namespace): Xml = Xml(Nil)
+    def attribute(name: Name): Option[String] = None
+    def children : Seq[Node] = Nil
 
-    override def toString(): String = s"&$name;"
+    def string(namespaces: Set[Namespace]): String = s"&$name;"
   }
 }
