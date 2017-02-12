@@ -121,25 +121,25 @@ class XmlParsingTests(parser: Parser[String, Xml]) extends TestSuite {
         |wwww""".stripMargin).toString()
   } returns "wwww"
 
-  val `Try to get the node by index` = test {
+  val `Get the node by index` = test {
     Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).toString()
   } returns "<a><x>12</x></a>"
 
   //TODO Throw exception for this case.
-//  val `Try to get not existed node` = test {
+//  val `Get the node by index that doesn't exist` = test {
 //    Xml.parse("<a><b>1</b></a>").a(10).toString()
 //  } returns ""
 
-  val `Try to get not existed node 2` = test {
+  val `Get not existed node 2` = test {
     val x = Xml.parse("<a><b>1</b></a>")
     x.a(0) == x(0)
   } returns true
 
-  val `Try to get rest (*) of xml with inner nodes` = test {
+  val `Get rest (*) of xml with inner nodes` = test {
     Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).*.toString()
   } returns "<x>12</x>"
 
-  val `Try to get rest (*) of xml with inner text` = test {
+  val `Get rest (*) of xml with text` = test {
     Xml.parse("<a><b>1</b></a><a>12</a>").a(1).*.toString()
   } returns "12"
 
