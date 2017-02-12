@@ -17,6 +17,16 @@ lazy val core = project
     "com.propensive" %% "rapture-core" % versions.rapture
   ))
 
+lazy val `xylophone-stdlib` = project
+  .in(file("xylophone-stdlib"))
+  .settings(buildSettings: _*)
+  .settings(publishSettings: _*)
+  .settings(moduleName := "xylophone-stdlib")
+  .settings(libraryDependencies ++= Seq(
+    "com.propensive" %% "rapture-core" % versions.rapture
+  ))
+  .dependsOn(core)
+
 lazy val tests = project
   .in(file("tests"))
   .settings(buildSettings: _*)
@@ -26,7 +36,7 @@ lazy val tests = project
   .settings(libraryDependencies ++= Seq(
     "com.propensive" %% "rapture-test" % versions.rapture % "test"
   ))
-  .dependsOn(core)
+  .dependsOn(core, `xylophone-stdlib`)
 
 lazy val buildSettings = Seq(
   organization := "com.propensive",

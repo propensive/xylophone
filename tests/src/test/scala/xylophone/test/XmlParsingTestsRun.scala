@@ -4,7 +4,7 @@ import rapture.test.{Programme, TestSuite}
 import xylophone.{ParseException, Parser, Xml}
 
 class XmlParsingTestsRun extends Programme {
-  include(new XmlParsingTests(xylophone.stdlib.implicitXmlStringParser))
+  include(new XmlParsingTests(xylophone.backends.stdlib.implicitXmlStringParser))
 }
 
 class XmlParsingTests(parser: Parser[String, Xml]) extends TestSuite {
@@ -48,7 +48,7 @@ class XmlParsingTests(parser: Parser[String, Xml]) extends TestSuite {
     Xml.parse("<a><b>10</b><b>11</b></a>").toString()
   } returns "<a><b>10</b><b>11</b></a>"
 
-  val `Xml parser should parse only string` = test {
+  val `Xml parser should parse plain string` = test {
     Xml.parse("just some text").toString()
   } returns "just some text"
 
@@ -111,7 +111,7 @@ class XmlParsingTests(parser: Parser[String, Xml]) extends TestSuite {
         |encoding="UTF-8"
         |?><a>wwww</a>""".stripMargin).toString()
   } returns "<a>wwww</a>"
-//
+
   val `Parsing XML with encoding attribute and only string/text` = test {
     Xml.parse(
       """<?xml
@@ -120,6 +120,29 @@ class XmlParsingTests(parser: Parser[String, Xml]) extends TestSuite {
         |?>
         |wwww""".stripMargin).toString()
   } returns "wwww"
+
+  val `Get the node by index` = test {
+    Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).toString()
+  } returns "<a><x>12</x></a>"
+
+  //TODO Throw exception for this case.
+//  val `Get the node by index that doesn't exist` = test {
+//    Xml.parse("<a><b>1</b></a>").a(10).toString()
+//  } returns ""
+
+  val `Get not existed node 2` = test {
+    val x = Xml.parse("<a><b>1</b></a>")
+    x.a(0) == x(0)
+  } returns true
+
+  val `Get rest (*) of xml with inner nodes` = test {
+    Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).*.toString()
+  } returns "<x>12</x>"
+
+  val `Get rest (*) of xml with text` = test {
+    Xml.parse("<a><b>1</b></a><a>12</a>").a(1).*.toString()
+  } returns "12"
+
 }
 
 
