@@ -1,5 +1,5 @@
-package xylophone
+package xylophone.backends.stdlib
 
-package object stdlib {
+object `package` {
   implicit val implicitXmlStringParser: StdLibXmlStringParser.type = StdLibXmlStringParser
 }

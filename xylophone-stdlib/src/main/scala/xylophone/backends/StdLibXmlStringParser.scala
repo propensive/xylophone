@@ -1,4 +1,4 @@
-package xylophone.stdlib
+package xylophone.backends.stdlib
 
 import xylophone.Xml.{DefaultNamespace, Element, Name, Namespace, Node => XmlNode, Text => XmlText}
 import xylophone.{Parser, Xml}
@@ -7,7 +7,6 @@ import scala.util.Try
 import scala.xml._
 
 
-// TODO need to move to another project (xylophone-stdlib)
 private[stdlib] object StdLibXmlStringParser extends Parser[String, Xml] {
 
   def parse(str: String): Try[Xml] = {

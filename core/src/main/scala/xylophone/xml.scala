@@ -1,5 +1,8 @@
 package xylophone
 
+import rapture.core.{MethodConstraint, Mode}
+import xylophone.Xml.{Element, Select}
+
 import language.dynamics
 import scala.util.{Failure, Success}
 
@@ -20,7 +23,7 @@ case class Xml(elements: Seq[Xml.Node], path: Vector[Xml.Path]) extends Dynamic 
   override def toString(): String =
     $normalize.map(_.string(Set())).mkString("")
 
-  def $normalize: Seq[Xml.Node] = Xml.normalize(elements, path)
+  private[xylophone] def $normalize: Seq[Xml.Node] = Xml.normalize(elements, path)
     
 }
 
@@ -31,15 +34,21 @@ case class XmlNode(elements: Seq[Xml.Node], path: Vector[Xml.Path]) extends Dyna
   def selectDynamic(tag: String)(implicit namespace: Xml.Namespace): Xml =
     Xml(elements, path :+ Xml.Select(Xml.Name(namespace, tag)))
 
-  def * : Xml = Xml(elements, path)
+  def * : Xml = {
+    elements.headOption match {
+      case Some(Element(name, _, _)) =>  Xml(elements, path :+ Select(name))
+      case _ =>  Xml(elements, path)
+    }
+  }
 
   override def toString(): String = $normalize.map(_.string(Set())).mkString("")
 
-  def $normalize: Option[Xml.Node] = Xml.normalize(elements, path).headOption
+  private[xylophone] def $normalize: Option[Xml.Node] = Xml.normalize(elements, path).headOption
+
 }
 
 case class XmlAttribute(xmlNode: XmlNode, attributeName: Xml.Name) {
-  def $normalize: Option[String] =
+  private[xylophone] def $normalize: Option[String] =
     xmlNode.$normalize.to[Seq].flatMap(_.attribute(attributeName)).headOption
 }
 
@@ -47,21 +56,22 @@ object Xml {
 
   private[this] val TopOpenTag = "<self>"
   private[this] val TopClosingTag = "</self>"
-//  implicit val defaultNamespace: Namespace = DefaultNamespace
 
-  def parse(str: String)(implicit parser: Parser[String, Xml], namespace: Namespace): Xml = {
-    val wrappedString = wrapXmlByTag(str)
-    parser.parse(wrappedString) match {
-      case Success(parsedXml) => Xml(parsedXml.self.$normalize, Vector())
-      case Failure(_) => throw ParseException(str)
+
+  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String, Xml], namespace: Namespace): mode.Wrap[Xml, ParseException] = {
+    mode.wrap {
+      val wrappedString = wrapXmlByTag(str)
+      parser.parse(wrappedString) match {
+        case Success(parsedXml) => Xml(parsedXml.self.$normalize, Vector())
+        case Failure(_) => mode.exception(ParseException(str))
+      }
     }
   }
 
   private[this] def wrapXmlByTag(str: String): String = {
-    if (!str.trim.startsWith("<?xml"))  TopOpenTag + str + TopClosingTag
-    else {
-      str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
-    }
+    if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
+    else TopOpenTag + str + TopClosingTag
+
   }
 
   private[xylophone] def normalize(elements: Seq[Node], path: Vector[Path]): Seq[Xml.Node] = {
@@ -72,8 +82,6 @@ object Xml {
   }
 
   sealed trait Path
-  sealed trait SeqPath extends Path
-  sealed trait NodePath extends Path
   case class Select(name: Name) extends Path
   case class Index(index: Int) extends Path
 
