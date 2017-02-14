@@ -20,4 +20,5 @@ class XmlParsingModeTests(parser: Parser[String, Xml])  extends TestSuite {
     import rapture.core.modes.returnOption._
     Xml.parse("<abc>10</abc>").map(_.toString())
   } returns Some("<abc>10</abc>")
+
 }

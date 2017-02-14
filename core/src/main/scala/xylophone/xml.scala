@@ -15,16 +15,14 @@ case class XmlSeq(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynam
   def apply(index: Int = 0): XmlNode =
     XmlNode(elements, path :+ Index(index))
 
-
   def * : XmlSeq = this
 
   def applyDynamic(name: String)(index: Int = 0): XmlNode = XmlNode(elements, path :+ Index(index))
 
-
   override def toString(): String =
     $normalize.map(_.string(Set())).mkString("")
 
-  private[xylophone] def $normalize: Seq[Ast.Node] = Ast.normalize(elements, path)
+  private[xylophone] def $normalize: Seq[Node] = Xml.normalize(elements, path)
     
 }
 
@@ -44,7 +42,7 @@ case class XmlNode(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dyna
 
   override def toString(): String = $normalize.map(_.string(Set())).mkString("")
 
-  private[xylophone] def $normalize: Option[Ast.Node] = Ast.normalize(elements, path).headOption
+  private[xylophone] def $normalize: Option[Ast.Node] = Xml.normalize(elements, path).headOption
 
 }
 
@@ -53,36 +51,37 @@ case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
     xmlNode.$normalize.to[Seq].flatMap(_.attribute(attributeName)).headOption
 }
 
-object Ast {
+object Xml {
 
   private[this] val TopOpenTag = "<self>"
   private[this] val TopClosingTag = "</self>"
 
-
-  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String], namespace: Namespace): mode.Wrap[XmlSeq, ParseException] = {
-    mode.wrap {
-      val wrappedString = wrapXmlByTag(str)
-      parser.parse(wrappedString) match {
-        case Success(parsedXml) => XmlSeq(parsedXml.self.$normalize, Vector())
-        case Failure(_) => mode.exception(ParseException(str))
-      }
+  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String],
+      namespace: Ast.Namespace): mode.Wrap[XmlSeq, ParseException] = mode.wrap {
+    
+    val wrappedString = wrapXmlByTag(str)
+    
+    parser.parse(wrappedString) match {
+      case Success(parsedXml) => XmlSeq(parsedXml.self.$normalize, Vector())
+      case Failure(_) => mode.exception(ParseException(str))
     }
   }
 
-  private[this] def wrapXmlByTag(str: String): String = {
+  private[this] def wrapXmlByTag(str: String): String =
     if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
     else TopOpenTag + str + TopClosingTag
 
-  }
-
-  private[xylophone] def normalize(elements: Seq[Node], path: Vector[Path]): Seq[Ast.Node] = {
-    path.foldLeft(elements){
-      case (el, Select(name)) =>
+  private[xylophone] def normalize(elements: Seq[Ast.Node], path: Vector[Ast.Path]): Seq[Ast.Node] =
+    path.foldLeft(elements) {
+      case (el, Ast.Select(name)) =>
         el.collect { case element@Ast.Element(`name`, _, _) => element.children }.flatten
-      case (el, Index( index)) =>
+      case (el, Ast.Index( index)) =>
         if (el.length > index) List(el(index)) else Nil
     }
-  }
+
+}
+
+object Ast {
 
   sealed trait Path
   case class Select(name: Name) extends Path
@@ -112,7 +111,6 @@ object Ast {
   sealed trait Node {
     def attribute(name: Name): Option[String]
     def children : Seq[Node]
-
     def string(namespaces: Set[Namespace]): String
   }
 
@@ -144,21 +142,18 @@ object Ast {
   case class ProessingInstruction(target: String, content: String) extends Node {
     def attribute(name: Name): Option[String] = None
     def children : Seq[Node] = Nil
-
     def string(namespaces: Set[Namespace]): String = s"<! $target $content !>"
   }
 
   case class Comment(content: String) extends Node {
     def attribute(name: Name): Option[String] = None
     def children : Seq[Node] = Nil
-
     def string(namespaces: Set[Namespace]): String = s"<!--$content-->"
   }
 
   case class Entity(name: String) extends Node {
     def attribute(name: Name): Option[String] = None
     def children : Seq[Node] = Nil
-
     def string(namespaces: Set[Namespace]): String = s"&$name;"
   }
 }
