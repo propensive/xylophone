@@ -1,29 +1,28 @@
 package xylophone.backends.stdlib
 
-import xylophone.Xml.{DefaultNamespace, Element, Name, Namespace, Node => XmlNode, Text => XmlText}
-import xylophone.{Parser, Xml}
+import xylophone._, Ast._
 
 import scala.util.Try
-import scala.xml._
+import scala.xml.{Node => ScalaNode, Text => ScalaText, _}
 
 
-private[stdlib] object StdLibXmlStringParser extends Parser[String, Xml] {
+private[stdlib] object StdLibXmlStringParser extends Parser[String] {
 
-  def parse(str: String): Try[Xml] = {
-    Try(Utility.trim(XML.loadString(str))).map(elem => Xml(Seq(convert(elem)), Vector()))
+  def parse(str: String): Try[XmlSeq] = {
+    Try(Utility.trim(XML.loadString(str))).map(elem => XmlSeq(Seq(convert(elem)), Vector()))
   }
 
   //TODO: remove recursion
-  private def convert(elem: Node): XmlNode = {
+  private def convert(elem: ScalaNode): Node = {
     val tagName = elem.label
     val attributes = extractAttributes(elem.attributes)
     val namespace = parseNamespace(elem)
 
     Element(Name(namespace, tagName), attributes,
-      elem.child.map(node => if (node.isInstanceOf[Text]) XmlText(node.text) else convert(node)))
+      elem.child.map(node => if (node.isInstanceOf[ScalaText]) Text(node.text) else convert(node)))
   }
 
-  private def extractAttributes(attrs: MetaData): Map[Xml.Name, String] = {
+  private def extractAttributes(attrs: MetaData): Map[Name, String] = {
     def parseNamespace(str: String): Namespace = {
       str.split(":") match {
         case Array(prefix, key) => Namespace(prefix, Some(key))
@@ -34,7 +33,7 @@ private[stdlib] object StdLibXmlStringParser extends Parser[String, Xml] {
   }
 
 
-  private def parseNamespace(node: Node): Namespace = {
+  private def parseNamespace(node: ScalaNode): Namespace = {
     if (node.prefix != null && node.prefix.nonEmpty) Namespace(node.prefix, None)
     else DefaultNamespace
   }

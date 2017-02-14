@@ -1,68 +1,69 @@
 package xylophone
 
 import rapture.core.{MethodConstraint, Mode}
-import xylophone.Xml.{Element, Select}
 
 import language.dynamics
 import scala.util.{Failure, Success}
 
-case class Xml(elements: Seq[Xml.Node], path: Vector[Xml.Path]) extends Dynamic {
+case class XmlSeq(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynamic {
 
-  import Xml._
+  import Ast._
 
-  def selectDynamic(tag: String)(implicit namespace: Namespace): Xml =
-    Xml(elements, path :+ Select(Name(namespace, tag)))
+  def selectDynamic(tag: String)(implicit namespace: Namespace): XmlSeq =
+    XmlSeq(elements, path :+ Select(Name(namespace, tag)))
 
   def apply(index: Int = 0): XmlNode =
     XmlNode(elements, path :+ Index(index))
 
 
-  def applyDynamic(name: String)(index: Int): XmlNode = XmlNode(elements, path :+ Index(index))
+  def * : XmlSeq = this
+
+  def applyDynamic(name: String)(index: Int = 0): XmlNode = XmlNode(elements, path :+ Index(index))
 
 
   override def toString(): String =
     $normalize.map(_.string(Set())).mkString("")
 
-  private[xylophone] def $normalize: Seq[Xml.Node] = Xml.normalize(elements, path)
+  private[xylophone] def $normalize: Seq[Ast.Node] = Ast.normalize(elements, path)
     
 }
 
-case class XmlNode(elements: Seq[Xml.Node], path: Vector[Xml.Path]) extends Dynamic {
-  def apply(attribute: Symbol)(implicit namespace: Xml.Namespace): XmlAttribute =
-    XmlAttribute(this, Xml.Name(namespace, attribute.name))
+case class XmlNode(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynamic {
+  def apply(attribute: Symbol)(implicit namespace: Ast.Namespace): XmlAttribute =
+    XmlAttribute(this, Ast.Name(namespace, attribute.name))
   
-  def selectDynamic(tag: String)(implicit namespace: Xml.Namespace): Xml =
-    Xml(elements, path :+ Xml.Select(Xml.Name(namespace, tag)))
+  def selectDynamic(tag: String)(implicit namespace: Ast.Namespace): XmlSeq =
+    XmlSeq(elements, path :+ Ast.Select(Ast.Name(namespace, tag)))
 
-  def * : Xml = {
+  def * : XmlSeq = {
     elements.headOption match {
-      case Some(Element(name, _, _)) =>  Xml(elements, path :+ Select(name))
-      case _ =>  Xml(elements, path)
+      case Some(Ast.Element(name, _, _)) =>  XmlSeq(elements, path :+ Ast.Select(name))
+      case _ =>  XmlSeq(elements, path)
     }
   }
 
   override def toString(): String = $normalize.map(_.string(Set())).mkString("")
 
-  private[xylophone] def $normalize: Option[Xml.Node] = Xml.normalize(elements, path).headOption
+  private[xylophone] def $normalize: Option[Ast.Node] = Ast.normalize(elements, path).headOption
 
 }
 
-case class XmlAttribute(xmlNode: XmlNode, attributeName: Xml.Name) {
+case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
   private[xylophone] def $normalize: Option[String] =
     xmlNode.$normalize.to[Seq].flatMap(_.attribute(attributeName)).headOption
 }
 
-object Xml {
+object Ast {
 
   private[this] val TopOpenTag = "<self>"
   private[this] val TopClosingTag = "</self>"
 
 
-  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String, Xml], namespace: Namespace): mode.Wrap[Xml, ParseException] = {
+  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String], namespace: Namespace): mode.Wrap[XmlSeq, ParseException] = {
     mode.wrap {
       val wrappedString = wrapXmlByTag(str)
       parser.parse(wrappedString) match {
-        case Success(parsedXml) => Xml(parsedXml.self.$normalize, Vector())
+        case Success(parsedXml) => XmlSeq(parsedXml.self.$normalize, Vector())
         case Failure(_) => mode.exception(ParseException(str))
       }
     }
@@ -74,17 +75,18 @@ object Xml {
 
   }
 
-  private[xylophone] def normalize(elements: Seq[Node], path: Vector[Path]): Seq[Xml.Node] = {
+  private[xylophone] def normalize(elements: Seq[Node], path: Vector[Path]): Seq[Ast.Node] = {
     path.foldLeft(elements){
-      case (el, Select(name)) => el.collect { case element@Element(`name`, _, _) => element.children }.flatten
-      case (el, Index( index)) => if (el.length > index) List(el(index)) else Nil
+      case (el, Select(name)) =>
+        el.collect { case element@Ast.Element(`name`, _, _) => element.children }.flatten
+      case (el, Index( index)) =>
+        if (el.length > index) List(el(index)) else Nil
     }
   }
 
   sealed trait Path
   case class Select(name: Name) extends Path
   case class Index(index: Int) extends Path
-
 
   object Namespace {
     val XmlnsNamespace = Namespace("xmlns", None)
