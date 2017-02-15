@@ -5,7 +5,6 @@ import xylophone._, Ast._
 import scala.util.Try
 import scala.xml.{Node => ScalaNode, Text => ScalaText, _}
 
-
 private[stdlib] object StdLibXmlStringParser extends Parser[String] {
 
   def parse(str: String): Try[XmlSeq] =

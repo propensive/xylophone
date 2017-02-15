@@ -7,9 +7,9 @@ class XmlParsingModeTestsRun extends Programme {
   include(new XmlParsingTests(xylophone.backends.stdlib.implicitXmlStringParser))
 }
 
-class XmlParsingModeTests(parser: Parser[String, Xml])  extends TestSuite {
+class XmlParsingModeTests(parser: Parser[String])  extends TestSuite {
 
-  implicit val implicitParser: Parser[String, Xml] = parser
+  implicit val implicitParser: Parser[String] = parser
 
   val `Should return None in OptionMode for invalid xml` = test {
     import rapture.core.modes.returnOption._
