@@ -7,9 +7,9 @@ class XmlParsingTestsRun extends Programme {
   include(new XmlParsingTests(xylophone.backends.stdlib.implicitXmlStringParser))
 }
 
-class XmlParsingTests(parser: Parser[String, Xml]) extends TestSuite {
+class XmlParsingTests(parser: Parser[String]) extends TestSuite {
 
-  implicit val implicitParser: Parser[String, Xml] = parser
+  implicit val implicitParser: Parser[String] = parser
 
   val xmlSample =
     """

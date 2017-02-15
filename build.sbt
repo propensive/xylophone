@@ -17,8 +17,8 @@ lazy val core = project
     "com.propensive" %% "rapture-core" % versions.rapture
   ))
 
-lazy val `xylophone-stdlib` = project
-  .in(file("xylophone-stdlib"))
+lazy val stdlib = project
+  .in(file("stdlib"))
   .settings(buildSettings: _*)
   .settings(publishSettings: _*)
   .settings(moduleName := "xylophone-stdlib")
@@ -36,7 +36,7 @@ lazy val tests = project
   .settings(libraryDependencies ++= Seq(
     "com.propensive" %% "rapture-test" % versions.rapture % "test"
   ))
-  .dependsOn(core, `xylophone-stdlib`)
+  .dependsOn(core, stdlib)
 
 lazy val buildSettings = Seq(
   organization := "com.propensive",
@@ -54,7 +54,7 @@ lazy val buildSettings = Seq(
     "-Ywarn-adapted-args",
     "-unchecked", // Enable additional warnings where generated code depends on assumptions.
     "-Xfatal-warnings", // Fail the compilation if there are any warnings.
-    "-Ywarn-unused-import", //Warn when imports are unused
+    //"-Ywarn-unused-import", //Warn when imports are unused
     "-Ywarn-unused",  // Warn when local and private vals, vars, defs, and types are unused.
     "-Yno-adapted-args", // Warn if an argument list is modified to match the receiver.
     "-Ywarn-nullary-override", // Warn when non-nullary overrides nullary, e.g. def foo() over def foo.
