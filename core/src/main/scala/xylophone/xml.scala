@@ -1,6 +1,7 @@
 package xylophone
 
 import rapture.core.{MethodConstraint, Mode}
+import xylophone.Ast.DefaultNamespace
 
 import language.dynamics
 import scala.util.{Failure, Success}
@@ -24,6 +25,12 @@ case class XmlSeq(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynam
 
   private[xylophone] def $normalize: Seq[Node] = Xml.normalize(elements, path)
     
+}
+
+object XmlSeq {
+  val Empty = XmlSeq(Nil, Vector())
+  def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
+  def apply(elements: Seq[Ast.Node]): XmlSeq = XmlSeq(elements, Vector())
 }
 
 case class XmlNode(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynamic {
@@ -66,6 +73,8 @@ object Xml {
       case Failure(_) => mode.exception(ParseException(str))
     }
   }
+
+  def apply[T](data: T)(implicit serializer: SeqSerializer[T]): XmlSeq = serializer.serialize(data)
 
   private[this] def wrapXmlByTag(str: String): String =
     if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
