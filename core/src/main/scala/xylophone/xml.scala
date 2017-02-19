@@ -23,8 +23,14 @@ case class XmlSeq($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic
   override def toString(): String =
     $normalize.map(_.string(Set())).mkString("")
 
+  def :+(xmlNode: XmlNode): XmlSeq = XmlSeq($normalize ++ xmlNode.$normalize, Vector())
+  
+  def +:(xmlNode: XmlNode): XmlSeq =
+    XmlSeq(xmlNode.$normalize.to[Seq] ++ $normalize, Vector())
+  
+  def ++(xmlSeq: XmlSeq): XmlSeq = XmlSeq($normalize ++ xmlSeq.$normalize, Vector())
+  
   private[xylophone] def $normalize: Seq[Node] = Xml.normalize($root, $path)
-
 }
 
 object XmlSeq extends XmlSeqSerializers{
@@ -51,8 +57,9 @@ case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynami
 
   override def toString(): String = $normalize.map(_.string(Set())).mkString("")
 
-  private[xylophone] def $normalize: Option[Ast.Node] =
-    Xml.normalize($root, $path).headOption
+  def +(xmlNode: XmlNode): XmlSeq = XmlSeq($normalize.to[Seq] ++ xmlNode.$normalize, Vector())
+  
+  private[xylophone] def $normalize: Option[Ast.Node] = Xml.normalize($root, $path).headOption
 }
 
 object XmlNode extends XmlNodeSerializers {
