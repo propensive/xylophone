@@ -130,7 +130,7 @@ class XmlParsingTests(parser: Parser[String]) extends TestSuite {
 //    Xml.parse("<a><b>1</b></a>").a(10).toString()
 //  } returns ""
 
-  val `Get not existed node 2` = test {
+  val `Check XmlSeq index` = test {
     val x = Xml.parse("<a><b>1</b></a>")
     x.a(0) == x(0)
   } returns true
