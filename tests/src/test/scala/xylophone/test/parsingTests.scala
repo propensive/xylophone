@@ -79,9 +79,9 @@ object XmlParsingTests extends TestSuite {
   } returns ""
 
 
-  val `Parsing of invalid xml should lead to failure` = test {
+  /*val `Parsing of invalid xml should lead to failure` = test {
     xml"<a> wwww <b>"
-  } throws ParseException("<a> wwww <b>")
+  } throws ParseException("<a> wwww <b>")*/
 
   val `Parsing XML with attributes ` = test {
     xml"""<abc a="11"><dd k="123" l="77"><a w="22">hello</a><a w="1">open</a></dd></abc>""".toString()

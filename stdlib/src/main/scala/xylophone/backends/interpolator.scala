@@ -8,10 +8,11 @@ object XmlInterpolator extends Interpolator {
   sealed trait ContextType extends Context
   case object AttributeValue extends ContextType
   case object InTagName extends ContextType
-  case object EndingTag extends ContextType
+  case object SelfClosingTagName extends ContextType
+  case object TagClose extends ContextType
+  case object ClosingTag extends ContextType
   case object InAttributeName extends ContextType
   case object InTagBody extends ContextType
-  case object InClosingTag extends ContextType
   case object AttributeEquals extends ContextType
   case object Body extends ContextType
   case object InBodyEntity extends ContextType
@@ -45,16 +46,20 @@ object XmlInterpolator extends Interpolator {
         }
       }
 
-      def push(tag: String) = copy(offset = offset + 1, stack = tag :: stack)
-      
       def reset() = copy(current = "")
-      def pop(tag: String) = stack.headOption match {
-        case Some(`tag`) => stack.tail
-        case Some(_)     => abort("closing tag does not match")
-        case None        => abort("spurious closing tag")
+      
+      def push() = copy(stack = current :: stack, current = "")
+      
+      def pop() = stack.headOption match {
+        case Some(`current`) => copy(stack = stack.tail)
+        case Some(tag) => abort(s"closing tag '$current' does not match expected tag '$tag'")
+        case None => rollback(current.length).abort(s"spurious closing tag: $current")
       }
 
-      override def toString() = s"part:${part.index}, off:$offset, stk:${stack.reverse.mkString(".")}, cur:'$current', ctx:$context"
+      def rollback(difference: Int) = copy(offset = offset - difference)
+
+      override def toString() = s"part:${part.index}, off:$offset, "+
+          s"stk:${stack.reverse.mkString("[", ".", "]")}, cur:'$current', ctx:$context"
     }
 
     val initialParseState = ParseState(interpolation.parts.head, 0, Body, List(), "", Vector())
@@ -74,70 +79,79 @@ object XmlInterpolator extends Interpolator {
     def parseLiteral(state: ParseState, string: String): ParseState = string.foldLeft(state) {
       case (state@ParseState(_, _, _, _, _, _), char) => state.context match {
         
-        case InTagName         => char match {
-          case TagChar()         => state(char)
-          case WhitespaceChar()  => state(InTagBody).reset()
-          case ':'               => state(char) // FIXME: Namespaces
-          case '/'               => state(if(state.current.isEmpty) EndingTag else InTagName)
-          case '>'               => state(Body)
-          case _                 => state.abort("FIXME")
+        case InTagName          => char match {
+          case TagChar()          => state(char)
+          case WhitespaceChar()   => state.push()(InTagBody).reset()
+          case ':'                => state(char) // FIXME: Namespaces
+          case '/'                => if(state.current.isEmpty) state(ClosingTag) else
+                                        state(SelfClosingTagName)
+          case '>'                => state.push()(Body)
+          case _                  => state.abort("not a valid tag name character")
         }
         
-        case EndingTag         => char match {
-          case TagChar()         => state(char)
-          case ':'               => state(char)
-          case '>'               => state(Body)
-          case _                 => state.abort("expected '>'")
+        case SelfClosingTagName => char match {
+          case TagChar()          => state(char)
+          case ':'                => state(char) // FIXME: Namespaces
+          case '>'                => state(Body)
+          case _                  => state.abort("expected '>'")
+        }
+        
+        case ClosingTag         => char match {
+          case TagChar()          => state(char)
+          case ':'                => state(char) // FIXME: Namespaces
+          case '>'                => state.pop()(Body)
+          case _                  => state.abort("expected '>'")
         }
 
-        case InAttributeName   => char match {
-          case TagChar()         => state(char)
-          case WhitespaceChar()  => state(InAttributeName)
-          case '='               => state(AttributeEquals)
-          case ':'               => state(char) // FIXME: Namespaces
-          case _                 => state.abort("FIXME")
+        case InAttributeName    => char match {
+          case TagChar()          => state(char)
+          case WhitespaceChar()   => state(InAttributeName)
+          case '='                => state(AttributeEquals).reset()
+          case ':'                => state(char) // FIXME: Namespaces
+          case _                  => state.abort("not a valid attribute name character")
         }
         
-        case AttributeEquals   => char match {
-          case WhitespaceChar()  => state()
-          case '"'               => state(AttributeValue)
-          case _                 => state.abort("FIXME")
+        case AttributeEquals    => char match {
+          case WhitespaceChar()   => state()
+          case '"'                => state(AttributeValue)
+          case _                  => state.abort("expected '='")
         }
         
-        case AttributeValue    => char match {
-          case '"'               => state(InTagBody)
-          case '&'               => state(InAttributeEntity)
-          case char              => state(char)
+        case AttributeValue     => char match {
+          case '"'                => state(InTagBody).reset()
+          case '&'                => state(InAttributeEntity)
+          case char               => state(char)
         }
         
-        case InTagBody         => char match {
-          case WhitespaceChar()  => state(InTagBody)
-          case TagChar()         => state(InAttributeName, char)
-          case '>'               => state(Body)
-          case _                 => state.abort("character not permitted in a tag name")
-        }
-        
-        case InClosingTag      => char match {
-          case TagChar()         => state(char)
-          case WhitespaceChar()  => state()
-          case _                 => state.abort("")
-        }
-        
-        case Body              => char match {
-          case '<'               => state(InTagName).reset()
-          case '&'               => state(InBodyEntity).reset()
-          case _                 => state()
-        }
-        
-        case InBodyEntity      => char match {
-          case ';'               => state()
-          case _                 => state.abort("not a valid character")
+        case InTagBody          => char match {
+          case WhitespaceChar()   => state(InTagBody)
+          case TagChar()          => state(InAttributeName, char)
+          case '>'                => state(Body)
+          case '/'                => state(TagClose)
+          case _                  => state.abort("character not permitted in a tag name")
         }
 
-        case InAttributeEntity => char match {
-          case ';'               => state()
-          case TagChar()         => state()
-          case _                 => state.abort("FIXME")
+        case TagClose           => char match {
+          case '>'                => state(Body)
+          case _                  => state.abort("expected '>'")
+        }
+        
+        
+        case Body               => char match {
+          case '<'                => state(InTagName).reset()
+          case '&'                => state(InBodyEntity).reset()
+          case _                  => state()
+        }
+        
+        case InBodyEntity       => char match {
+          case ';'                => state()
+          case _                  => state.abort("not a valid entity name character")
+        }
+
+        case InAttributeEntity  => char match {
+          case ';'                => state()
+          case TagChar()          => state()
+          case _                  => state.abort("not a valid entity name character")
         }
       }
     }
@@ -152,7 +166,9 @@ object XmlInterpolator extends Interpolator {
 
     }
 
-    if(finalParseState.stack.nonEmpty) finalParseState.abort("missing closing tag(s)")
+    if(finalParseState.stack.nonEmpty)
+      finalParseState.copy(offset = finalParseState.offset - 1).abort(
+          s"expected closing tag: ${finalParseState.stack.head}")
 
     finalParseState.holes
   }
