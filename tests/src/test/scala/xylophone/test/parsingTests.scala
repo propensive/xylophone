@@ -75,20 +75,20 @@ object XmlParsingTests extends TestSuite {
 
 
   val `Getting not existing tag should return an empty XML` = test {
-    Xml.parse("<a>hello</a>").abc.toString()
+    xml"<a>hello</a>".abc.toString()
   } returns ""
 
 
   val `Parsing of invalid xml should lead to failure` = test {
-    Xml.parse("<a> wwww <b>")
+    xml"<a> wwww <b>"
   } throws ParseException("<a> wwww <b>")
 
   val `Parsing XML with attributes ` = test {
-    Xml.parse("""<abc a="11"><dd k="123" l="77"><a w="22">hello</a><a w="1">open</a></dd></abc>""").toString()
+    xml"""<abc a="11"><dd k="123" l="77"><a w="22">hello</a><a w="1">open</a></dd></abc>""".toString()
   } returns """<abc a="11"><dd l="77" k="123"><a w="22">hello</a><a w="1">open</a></dd></abc>"""
 
   val `Parsing XML with attributes and namespaces` = test {
-    Xml.parse("""<z:Attachment rdf:about="#item_1" rdf:id="10">xxxxx</z:Attachment>""").toString()
+    xml"""<z:Attachment rdf:about="#item_1" rdf:id="10">xxxxx</z:Attachment>""".toString()
   } returns """<z:Attachment rdf:id="10" rdf:about="#item_1">xxxxx</z:Attachment>"""
 
 
