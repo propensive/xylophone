@@ -66,7 +66,7 @@ lazy val buildSettings = Seq(
     "-Xexperimental",
     "-Xfuture" // Turn on future language features and guard against a few deprecated features around Futures.
   ),
-  crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1"),
+  crossScalaVersions := Seq("2.11.8", "2.12.1"),
   scmInfo := Some(ScmInfo(url("https://github.com/propensive/xylophone"),
     "scm:git:git@github.com:propensive/xylophone.git"))
 )

@@ -1,1 +1,0 @@
-package object xylophone extends XmlSeqSerializers with XmlNodeSerializers

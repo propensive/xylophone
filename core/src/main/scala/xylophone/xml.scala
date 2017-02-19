@@ -24,19 +24,21 @@ case class XmlSeq(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynam
     $normalize.map(_.string(Set())).mkString("")
 
   private[xylophone] def $normalize: Seq[Node] = Xml.normalize(elements, path)
-    
+
 }
 
-object XmlSeq {
-  val Empty = XmlSeq(Nil, Vector())
-  def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
-  def apply(elements: Seq[Ast.Node]): XmlSeq = XmlSeq(elements, Vector())
+object XmlSeq extends XmlSeqSerializers{
+  private[xylophone] val Empty = XmlSeq(Nil, Vector())
+  private[xylophone] def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
+  private[xylophone] def apply(elements: Seq[Ast.Node]): XmlSeq = XmlSeq(elements, Vector())
 }
+
+
 
 case class XmlNode(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynamic {
   def apply(attribute: Symbol)(implicit namespace: Ast.Namespace): XmlAttribute =
     XmlAttribute(this, Ast.Name(namespace, attribute.name))
-  
+
   def selectDynamic(tag: String)(implicit namespace: Ast.Namespace): XmlSeq =
     XmlSeq(elements, path :+ Ast.Select(Ast.Name(namespace, tag)))
 
@@ -53,6 +55,15 @@ case class XmlNode(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dyna
 
 }
 
+object XmlNode extends XmlNodeSerializers {
+  private[xylophone] val Empty = XmlNode(Nil, Vector())
+  private[xylophone] def apply(element: Ast.Node): XmlNode = XmlNode(Seq(element), Vector())
+  private[xylophone]  def apply(elements: Seq[Ast.Node]): XmlNode = XmlNode(elements, Vector())
+
+  def apply[T](data: T)(implicit serializer: NodeSerializer[T]): XmlNode = serializer.serialize(data)
+}
+
+
 case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
   private[xylophone] def $normalize: Option[String] =
     xmlNode.$normalize.to[Seq].flatMap(_.attribute(attributeName)).headOption
@@ -65,16 +76,16 @@ object Xml {
 
   def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String],
       namespace: Ast.Namespace): mode.Wrap[XmlSeq, ParseException] = mode.wrap {
-    
+
     val wrappedString = wrapXmlByTag(str)
-    
+
     parser.parse(wrappedString) match {
       case Success(parsedXml) => XmlSeq(parsedXml.self.$normalize, Vector())
       case Failure(_) => mode.exception(ParseException(str))
     }
   }
 
-  def apply[T](data: T)(implicit serializer: SeqSerializer[T]): XmlSeq = serializer.serialize(data)
+  def apply[T](data: T)(implicit serializer: XmlSeq.SeqSerializer[T]): XmlSeq = serializer.serialize(data)
 
   private[this] def wrapXmlByTag(str: String): String =
     if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
@@ -99,7 +110,7 @@ object Ast {
   object Namespace {
     val XmlnsNamespace = Namespace("xmlns", None)
   }
-  
+
   implicit object DefaultNamespace extends Namespace("", None) {
     override def prefix(tag: String): String = tag
   }
@@ -132,7 +143,7 @@ object Ast {
 
   case class Element(name: Name, attributes: Map[Name, String], children: Seq[Node]) extends Node {
     def attribute(name: Name): Option[String] = attributes.get(name)
-    
+
     def string(namespaces: Set[Namespace]): String = {
       val (atts, nss) =
         if(namespaces contains name.namespace) (attributes ++ name.namespace.xmlnsAttribute, namespaces)
@@ -141,7 +152,7 @@ object Ast {
       val attsString = if(atts.nonEmpty) atts.map {
         case (attrName, value) => s"""$attrName="$value""""
       }.mkString(" ", " ", "") else ""
-      
+
       val content = children.map { child => child.string(nss).mkString("") }.mkString("")
 
       s"<$name$attsString>$content</$name>"
