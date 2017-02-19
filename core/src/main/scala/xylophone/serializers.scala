@@ -29,7 +29,7 @@ trait XmlSeqSerializers {
     def fromMap(map: ListMap[String, XmlSeq])(implicit namespace: Namespace): XmlSeq =
       map.foldLeft(XmlSeq.Empty) {
         case (xml, (k, v: XmlSeq)) =>
-          XmlSeq(xml.elements :+ Element(Name(namespace, k), Map(), v.elements))
+          XmlSeq(xml.$root :+ Element(Name(namespace, k), Map(), v.$root))
       }
   }
 
@@ -56,9 +56,9 @@ trait XmlSeqSerializers {
                tag: SeqTag[S[Type]],
                namespace: Namespace): SeqSerializer[S[Type]] =
     _.foldLeft[XmlSeq](XmlSeq.Empty) { (xml, el) =>
-      val elements = seqSerializer.serialize(el).elements
+      val elements = seqSerializer.serialize(el).$root
       val node = Element(Name(namespace, tag.name), Map(), elements)
-      XmlSeq(xml.elements :+ node)
+      XmlSeq(xml.$root :+ node)
     }
 }
 
@@ -78,7 +78,7 @@ trait XmlNodeSerializers {
                                      wrapTag: WrapTag[T],
                                      namespace: Namespace): NodeSerializer[T] = { (t: T) =>
 
-    val children = seqSerializer.serialize(t).elements
+    val children = seqSerializer.serialize(t).$root
     XmlNode(Seq(Element(Name(namespace, wrapTag.name), Map(), children)), Vector())
   }
 
