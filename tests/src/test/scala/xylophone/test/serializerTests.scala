@@ -7,12 +7,12 @@ import xylophone.XmlSeq._
 import scala.collection.immutable.ListMap
 
 class XmlSerializationTestsRun extends Programme {
-  include(new XmlSerializationTests(xylophone.backends.stdlib.implicitXmlStringParser))
+  include(XmlSerializationTests)
 }
 
-class XmlSerializationTests(parser: Parser[String]) extends TestSuite {
+object XmlSerializationTests extends TestSuite {
 
-  implicit val implicitParser: Parser[String] = parser
+  implicit val implicitParser: Parser[String] = backends.stdlib.implicitXmlStringParser
 
   case class Address(id: Int, users: List[User])
   case class User(name: String)
@@ -24,7 +24,7 @@ class XmlSerializationTests(parser: Parser[String]) extends TestSuite {
   implicit val serializer: XmlSeq.SeqSerializer[Address] = (address: Address) => {
     SeqSerializer.fromMap(ListMap(
       "id" ->  implicitly[XmlSeq.SeqSerializer[Int]].serialize(address.id),
-      "users" -> XmlSeq(implicitly[XmlSeq.SeqSerializer[List[User]]].serialize(address.users).elements)
+      "users" -> XmlSeq(implicitly[XmlSeq.SeqSerializer[List[User]]].serialize(address.users).$root)
     ))
   }
 
@@ -66,7 +66,6 @@ class XmlSerializationTests(parser: Parser[String]) extends TestSuite {
     implicit val userWrapTag: WrapTag[List[User]] = WrapTag("users")
     XmlNode(List(User("Alice"), User("Dave"))).toString()
   } returns "<users><user><name>Alice</name></user><user><name>Dave</name></user></users>"
-
 
   val `Test implicit Boolean serializer` = test(Xml[Boolean](false).toString()).returns("false")
   val `Test implicit Byte serializer` = test(Xml[Byte](1).toString()).returns("1")

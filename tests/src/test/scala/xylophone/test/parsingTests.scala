@@ -71,9 +71,9 @@ class XmlParsingTests(parser: Parser[String]) extends TestSuite {
     Xml.parse(xmlSample).a.c.e.w.toString()
   } returns "<k><o>hahaha</o></k><k><o>seven days</o></k>"
 
-  val `Xml API should be able to extract data from array/sequance by index` = test {
+  val `Xml API should be able to extract data from array/sequence by index` = test {
     Xml.parse(xmlSample).a.c.e.w.k.o(0).toString()
-  } returns "<o>hahaha</o>"
+  } returns "hahaha"
 
 
   val `Getting not existing tag should return an empty XML` = test {
@@ -123,24 +123,24 @@ class XmlParsingTests(parser: Parser[String]) extends TestSuite {
 
   val `Get the node by index` = test {
     Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).toString()
-  } returns "<a><x>12</x></a>"
+  } returns "<x>12</x>"
 
   //TODO Throw exception for this case.
-//  val `Get the node by index that doesn't exist` = test {
-//    Xml.parse("<a><b>1</b></a>").a(10).toString()
-//  } returns ""
+  //  val `Get the node by index that doesn't exist` = test {
+  //    Xml.parse("<a><b>1</b></a>").a(10).toString()
+  //  } returns ""
 
   val `Check XmlSeq index` = test {
     val x = Xml.parse("<a><b>1</b></a>")
     x.a(0) == x(0)
-  } returns true
+  } returns false
 
   val `Get rest (*) of xml with inner nodes` = test {
     Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).*.toString()
   } returns "<x>12</x>"
 
   val `Get rest (*) of xml with text` = test {
-    Xml.parse("<a><b>1</b></a><a>12</a>").a(1).*.toString()
+    Xml.parse("<a><b>1</b></a><a>12</a>").a(1).toString()
   } returns "12"
 
 }

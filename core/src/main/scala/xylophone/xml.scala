@@ -6,24 +6,24 @@ import xylophone.Ast.DefaultNamespace
 import language.dynamics
 import scala.util.{Failure, Success}
 
-case class XmlSeq(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynamic {
+case class XmlSeq($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
   import Ast._
 
   def selectDynamic(tag: String)(implicit namespace: Namespace): XmlSeq =
-    XmlSeq(elements, path :+ Select(Name(namespace, tag)))
+    XmlSeq($root, $path :+ Select(Name(namespace, tag)))
 
   def apply(index: Int = 0): XmlNode =
-    XmlNode(elements, path :+ Index(index))
+    XmlNode($root, $path :+ Index(index))
 
-  def * : XmlSeq = this
+  def * : XmlSeq = XmlSeq($root, $path :+ Children)
 
-  def applyDynamic(name: String)(index: Int = 0): XmlNode =
-    XmlNode(elements, path :+ Index(index))
+  def applyDynamic(tag: String)(index: Int = 0)(implicit namespace: Ast.Namespace): XmlNode =
+    XmlNode($root, $path :+ Select(Name(namespace, tag)) :+ Index(index))
 
   override def toString(): String =
     $normalize.map(_.string(Set())).mkString("")
 
-  private[xylophone] def $normalize: Seq[Node] = Xml.normalize(elements, path)
+  private[xylophone] def $normalize: Seq[Node] = Xml.normalize($root, $path)
 
 }
 
@@ -31,37 +31,35 @@ object XmlSeq extends XmlSeqSerializers{
   
   private[xylophone] val Empty = XmlSeq(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
-  private[xylophone] def apply(elements: Seq[Ast.Node]): XmlSeq = XmlSeq(elements, Vector())
+  private[xylophone] def apply(root: Seq[Ast.Node]): XmlSeq = XmlSeq(root, Vector())
 }
 
 
 
-case class XmlNode(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynamic {
+case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
   
   def apply(attribute: Symbol)(implicit namespace: Ast.Namespace): XmlAttribute =
     XmlAttribute(this, Ast.Name(namespace, attribute.name))
 
   def selectDynamic(tag: String)(implicit namespace: Ast.Namespace): XmlSeq =
-    XmlSeq(elements, path :+ Ast.Select(Ast.Name(namespace, tag)))
+    XmlSeq($root, $path :+ Ast.Select(Ast.Name(namespace, tag)))
 
-  def * : XmlSeq = {
-    elements.headOption match {
-      case Some(Ast.Element(name, _, _)) =>  XmlSeq(elements, path :+ Ast.Select(name))
-      case _ =>  XmlSeq(elements, path)
-    }
-  }
+  def applyDynamic(tag: String)(index: Int = 0)(implicit namespace: Ast.Namespace): XmlNode =
+    XmlNode($root, $path :+ Ast.Select(Ast.Name(namespace, tag)) :+ Ast.Index(index))
+
+  def * : XmlSeq = XmlSeq($root, $path)
 
   override def toString(): String = $normalize.map(_.string(Set())).mkString("")
 
   private[xylophone] def $normalize: Option[Ast.Node] =
-    Xml.normalize(elements, path).headOption
+    Xml.normalize($root, $path).headOption
 }
 
 object XmlNode extends XmlNodeSerializers {
 
   private[xylophone] val Empty = XmlNode(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlNode = XmlNode(Seq(element), Vector())
-  private[xylophone]  def apply(elements: Seq[Ast.Node]): XmlNode = XmlNode(elements, Vector())
+  private[xylophone]  def apply(root: Seq[Ast.Node]): XmlNode = XmlNode(root, Vector())
 
   def apply[T](data: T)(implicit serializer: NodeSerializer[T]): XmlNode =
     serializer.serialize(data)
@@ -97,16 +95,21 @@ object Xml {
     if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
     else TopOpenTag + str + TopClosingTag
 
-  private[xylophone] def normalize(elements: Seq[Ast.Node],
-                                   path: Vector[Ast.Path]): Seq[Ast.Node] =
-    path.foldLeft(elements) {
+  private[xylophone] def normalize($root: Seq[Ast.Node],
+                                   $path: Vector[Ast.Path]): Seq[Ast.Node] =
+    $path.foldLeft($root) {
       case (element, Ast.Select(name)) =>
         element.collect { case element@Ast.Element(`name`, _, _) =>
           element.children
         }.flatten
       
       case (element, Ast.Index( index)) =>
-        if (element.length > index) List(element(index)) else Nil
+        if(element.length > index) List(element(index)) else Nil
+
+      case (element, Ast.Children) =>
+        element.collect { case elem@Ast.Element(_, _, _) =>
+          elem.children
+        }.flatten
     }
 
 }
@@ -116,6 +119,7 @@ object Ast {
   sealed trait Path
   case class Select(name: Name) extends Path
   case class Index(index: Int) extends Path
+  case object Children extends Path
 
   object Namespace { val XmlnsNamespace: Namespace = Namespace("xmlns", None) }
 
