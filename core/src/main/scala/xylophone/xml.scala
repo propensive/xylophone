@@ -7,7 +7,6 @@ import language.dynamics
 import scala.util.{Failure, Success}
 
 case class XmlSeq(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynamic {
-
   import Ast._
 
   def selectDynamic(tag: String)(implicit namespace: Namespace): XmlSeq =
@@ -18,7 +17,8 @@ case class XmlSeq(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynam
 
   def * : XmlSeq = this
 
-  def applyDynamic(name: String)(index: Int = 0): XmlNode = XmlNode(elements, path :+ Index(index))
+  def applyDynamic(name: String)(index: Int = 0): XmlNode =
+    XmlNode(elements, path :+ Index(index))
 
   override def toString(): String =
     $normalize.map(_.string(Set())).mkString("")
@@ -28,6 +28,7 @@ case class XmlSeq(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynam
 }
 
 object XmlSeq extends XmlSeqSerializers{
+  
   private[xylophone] val Empty = XmlSeq(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
   private[xylophone] def apply(elements: Seq[Ast.Node]): XmlSeq = XmlSeq(elements, Vector())
@@ -36,6 +37,7 @@ object XmlSeq extends XmlSeqSerializers{
 
 
 case class XmlNode(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dynamic {
+  
   def apply(attribute: Symbol)(implicit namespace: Ast.Namespace): XmlAttribute =
     XmlAttribute(this, Ast.Name(namespace, attribute.name))
 
@@ -51,20 +53,23 @@ case class XmlNode(elements: Seq[Ast.Node], path: Vector[Ast.Path]) extends Dyna
 
   override def toString(): String = $normalize.map(_.string(Set())).mkString("")
 
-  private[xylophone] def $normalize: Option[Ast.Node] = Xml.normalize(elements, path).headOption
-
+  private[xylophone] def $normalize: Option[Ast.Node] =
+    Xml.normalize(elements, path).headOption
 }
 
 object XmlNode extends XmlNodeSerializers {
+
   private[xylophone] val Empty = XmlNode(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlNode = XmlNode(Seq(element), Vector())
   private[xylophone]  def apply(elements: Seq[Ast.Node]): XmlNode = XmlNode(elements, Vector())
 
-  def apply[T](data: T)(implicit serializer: NodeSerializer[T]): XmlNode = serializer.serialize(data)
+  def apply[T](data: T)(implicit serializer: NodeSerializer[T]): XmlNode =
+    serializer.serialize(data)
 }
 
 
 case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
+  
   private[xylophone] def $normalize: Option[String] =
     xmlNode.$normalize.to[Seq].flatMap(_.attribute(attributeName)).headOption
 }
@@ -85,18 +90,23 @@ object Xml {
     }
   }
 
-  def apply[T](data: T)(implicit serializer: XmlSeq.SeqSerializer[T]): XmlSeq = serializer.serialize(data)
+  def apply[T](data: T)(implicit serializer: XmlSeq.SeqSerializer[T]): XmlSeq =
+    serializer.serialize(data)
 
   private[this] def wrapXmlByTag(str: String): String =
     if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
     else TopOpenTag + str + TopClosingTag
 
-  private[xylophone] def normalize(elements: Seq[Ast.Node], path: Vector[Ast.Path]): Seq[Ast.Node] =
+  private[xylophone] def normalize(elements: Seq[Ast.Node],
+                                   path: Vector[Ast.Path]): Seq[Ast.Node] =
     path.foldLeft(elements) {
-      case (el, Ast.Select(name)) =>
-        el.collect { case element@Ast.Element(`name`, _, _) => element.children }.flatten
-      case (el, Ast.Index( index)) =>
-        if (el.length > index) List(el(index)) else Nil
+      case (element, Ast.Select(name)) =>
+        element.collect { case element@Ast.Element(`name`, _, _) =>
+          element.children
+        }.flatten
+      
+      case (element, Ast.Index( index)) =>
+        if (element.length > index) List(element(index)) else Nil
     }
 
 }
@@ -107,11 +117,10 @@ object Ast {
   case class Select(name: Name) extends Path
   case class Index(index: Int) extends Path
 
-  object Namespace {
-    val XmlnsNamespace = Namespace("xmlns", None)
-  }
+  object Namespace { val XmlnsNamespace: Namespace = Namespace("xmlns", None) }
 
   implicit object DefaultNamespace extends Namespace("", None) {
+    
     override def prefix(tag: String): String = tag
   }
 
@@ -129,51 +138,46 @@ object Ast {
   }
 
   sealed trait Node {
-    def attribute(name: Name): Option[String]
-    def children : Seq[Node]
+    def attribute(name: Name): Option[String] = None
     def string(namespaces: Set[Namespace]): String
   }
 
+  case class Element(name: Name,
+                     attributes: Map[Name, String],
+                     children: Seq[Node]) extends Node {
+
+    override def attribute(name: Name): Option[String] = attributes.get(name)
+
+    def string(namespaces: Set[Namespace]): String = {
+      
+      val allAttributes = if(namespaces contains name.namespace) {
+        attributes ++ name.namespace.xmlnsAttribute
+      } else attributes
+
+      val attributesString = if(allAttributes.nonEmpty) allAttributes.map {
+        case (key, value) => s"""$key="$value""""
+      }.mkString(" ", " ", "") else ""
+
+      val content = children.map(_.string(namespaces).mkString("")).mkString("")
+
+      s"<$name$attributesString>$content</$name>"
+    }
+  }
+
   case class Text(text: String) extends Node {
-    def attribute(name: Name): Option[String] = None
-    def children : Seq[Node] = Nil
     def string(namespaces: Set[Namespace]): String = text
     override def toString: String = string(Set())
   }
 
-  case class Element(name: Name, attributes: Map[Name, String], children: Seq[Node]) extends Node {
-    def attribute(name: Name): Option[String] = attributes.get(name)
-
-    def string(namespaces: Set[Namespace]): String = {
-      val (atts, nss) =
-        if(namespaces contains name.namespace) (attributes ++ name.namespace.xmlnsAttribute, namespaces)
-        else (attributes, namespaces)
-
-      val attsString = if(atts.nonEmpty) atts.map {
-        case (attrName, value) => s"""$attrName="$value""""
-      }.mkString(" ", " ", "") else ""
-
-      val content = children.map { child => child.string(nss).mkString("") }.mkString("")
-
-      s"<$name$attsString>$content</$name>"
-    }
-  }
-
   case class ProessingInstruction(target: String, content: String) extends Node {
-    def attribute(name: Name): Option[String] = None
-    def children : Seq[Node] = Nil
     def string(namespaces: Set[Namespace]): String = s"<! $target $content !>"
   }
 
   case class Comment(content: String) extends Node {
-    def attribute(name: Name): Option[String] = None
-    def children : Seq[Node] = Nil
     def string(namespaces: Set[Namespace]): String = s"<!--$content-->"
   }
 
   case class Entity(name: String) extends Node {
-    def attribute(name: Name): Option[String] = None
-    def children : Seq[Node] = Nil
     def string(namespaces: Set[Namespace]): String = s"&$name;"
   }
 }
