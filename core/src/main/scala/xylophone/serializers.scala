@@ -36,17 +36,17 @@ trait XmlSeqSerializers {
   implicit def defaultSeqTag[T: ClassTag, F[_]]: SeqTag[F[T]] =
     SeqTag(implicitly[ClassTag[T]].runtimeClass.getSimpleName.toLowerCase())
   
-  implicit def byteSerializer: SeqSerializer[Byte] = x => XmlSeq(Text(x.toString))
-  implicit def shortSerializer: SeqSerializer[Short] = x => XmlSeq(Text(x.toString))
-  implicit def intSerializer: SeqSerializer[Int] = x => XmlSeq(Text(x.toString))
-  implicit def longSerializer: SeqSerializer[Long] = x => XmlSeq(Text(x.toString))
-  implicit def booleanSerializer: SeqSerializer[Boolean] = x => XmlSeq(Text(x.toString))
-  implicit def stringSerializer: SeqSerializer[String] = x => XmlSeq(Text(x))
-  implicit def floatSerializer: SeqSerializer[Float] = x => XmlSeq(Text(x.toString))
-  implicit def doubleSerializer: SeqSerializer[Double] = x => XmlSeq(Text(x.toString))
-  implicit def bigDecimalSerializer: SeqSerializer[BigDecimal] = x => XmlSeq(Text(x.toString))
-  implicit def bigIntSerializer: SeqSerializer[BigInt] = x => XmlSeq(Text(x.toString))
-  implicit def nilSerializer: SeqSerializer[Nil.type] = XmlSeq(_)
+  implicit val byteSerializer: SeqSerializer[Byte] = x => XmlSeq(Text(x.toString))
+  implicit val shortSerializer: SeqSerializer[Short] = x => XmlSeq(Text(x.toString))
+  implicit val intSerializer: SeqSerializer[Int] = x => XmlSeq(Text(x.toString))
+  implicit val longSerializer: SeqSerializer[Long] = x => XmlSeq(Text(x.toString))
+  implicit val booleanSerializer: SeqSerializer[Boolean] = x => XmlSeq(Text(x.toString))
+  implicit val stringSerializer: SeqSerializer[String] = x => XmlSeq(Text(x))
+  implicit val floatSerializer: SeqSerializer[Float] = x => XmlSeq(Text(x.toString))
+  implicit val doubleSerializer: SeqSerializer[Double] = x => XmlSeq(Text(x.toString))
+  implicit val bigDecimalSerializer: SeqSerializer[BigDecimal] = x => XmlSeq(Text(x.toString))
+  implicit val bigIntSerializer: SeqSerializer[BigInt] = x => XmlSeq(Text(x.toString))
+  implicit val nilSerializer: SeqSerializer[Nil.type] = XmlSeq(_)
   
   implicit def optionSerializer[T](implicit ser: SeqSerializer[T]): SeqSerializer[Option[T]] =
     _.map(ser.serialize).getOrElse(XmlSeq(Text("")))

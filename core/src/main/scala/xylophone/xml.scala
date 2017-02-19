@@ -59,7 +59,7 @@ object XmlNode extends XmlNodeSerializers {
 
   private[xylophone] val Empty = XmlNode(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlNode = XmlNode(Seq(element), Vector())
-  private[xylophone]  def apply(root: Seq[Ast.Node]): XmlNode = XmlNode(root, Vector())
+  private[xylophone] def apply(root: Seq[Ast.Node]): XmlNode = XmlNode(root, Vector())
 
   def apply[T](data: T)(implicit serializer: NodeSerializer[T]): XmlNode =
     serializer.serialize(data)
