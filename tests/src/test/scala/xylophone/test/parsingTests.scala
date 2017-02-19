@@ -1,15 +1,13 @@
 package xylophone.test
 
 import rapture.test.{Programme, TestSuite}
-import xylophone.{ParseException, Parser, Xml}
+import xylophone._, backends.stdlib._
 
 class XmlParsingTestsRun extends Programme {
-  include(new XmlParsingTests(xylophone.backends.stdlib.implicitXmlStringParser))
+  include(XmlParsingTests)
 }
 
-class XmlParsingTests(parser: Parser[String]) extends TestSuite {
-
-  implicit val implicitParser: Parser[String] = parser
+object XmlParsingTests extends TestSuite {
 
   val xmlSample =
     """
@@ -64,7 +62,7 @@ class XmlParsingTests(parser: Parser[String]) extends TestSuite {
   //
 
   val `Xml parser should parse strings with self closed tag` = test {
-    Xml.parse("just some text <ab></ab> yes").toString()
+    xml"just some text <ab></ab> yes".toString()
   } returns "just some text<ab></ab>yes"
 
   val `Xml API should be able to extract data by tag name` = test {
