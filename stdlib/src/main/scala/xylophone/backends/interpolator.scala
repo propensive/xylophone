@@ -6,26 +6,26 @@ import contextual._
 object XmlInterpolator extends Interpolator {
 
   implicit val embedStrings = XmlInterpolator.embed[String](
-    Case(AttributeEquals, InTagBody) { s => StringLike('"'+s+'"'): Input },
-    Case(AttributeValue, AttributeValue) { s => StringLike(s): Input },
+    Case(AttributeEquals, InTagBody) { s => StringLike('"'+s+'"') },
+    Case(AttributeValue, AttributeValue) { s => StringLike(s) },
     Case(Body, Body) { s => StringLike(s) }
   )
 
   implicit val embedXmlSeqs = XmlInterpolator.embed[XmlSeq](
-    Case(Body, Body) { x => XmlLike(x): Input }
+    Case(Body, Body) { x => XmlLike(x) }
   )
 
   implicit val embedXmlNodes = XmlInterpolator.embed[XmlNode](
-    Case(Body, Body) { x => XmlLike(XmlSeq(x.$root, x.$path)): Input }
+    Case(Body, Body) { x => XmlLike(XmlSeq(x.$root, x.$path)) }
   )
 
   implicit val embedPairs = XmlInterpolator.embed[(String, String)](
-    Case(InTagBody, InTagBody) { p => StringLike(s""" ${p._1}="${p._2}" """): Input }
+    Case(InTagBody, InTagBody) { p => StringLike(s""" ${p._1}="${p._2}" """) }
   )
   
   implicit val embedStringMap = XmlInterpolator.embed[Map[String, String]](
     Case(InTagBody, InTagBody) { m =>
-      StringLike(m.map { case (k, v) => k+"="+'"'+v+'"' }.mkString(" ", " ", " ")): Input }
+      StringLike(m.map { case (k, v) => k+"="+'"'+v+'"' }.mkString(" ", " ", " ")) }
   )
 
   sealed trait Input

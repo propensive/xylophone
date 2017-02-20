@@ -3,7 +3,7 @@ import ReleaseTransformations._
 
 val versions = new {
   val rapture = "2.0.0-M8"
-  val contextual = "1.0.0"
+  val contextual = "1.0.1"
   val scalaMacros = "2.1.0"
   val macroCompat = "1.1.1"
 }
