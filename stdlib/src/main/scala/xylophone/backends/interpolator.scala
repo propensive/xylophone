@@ -5,6 +5,33 @@ import contextual._
 
 object XmlInterpolator extends Interpolator {
 
+  implicit val embedStrings = XmlInterpolator.embed[String](
+    Case(AttributeEquals, InTagBody) { s => StringLike('"'+s+'"'): Input },
+    Case(AttributeValue, AttributeValue) { s => StringLike(s): Input },
+    Case(Body, Body) { s => StringLike(s) }
+  )
+
+  implicit val embedXmlSeqs = XmlInterpolator.embed[XmlSeq](
+    Case(Body, Body) { x => XmlLike(x): Input }
+  )
+
+  implicit val embedXmlNodes = XmlInterpolator.embed[XmlNode](
+    Case(Body, Body) { x => XmlLike(XmlSeq(x.$root, x.$path)): Input }
+  )
+
+  implicit val embedPairs = XmlInterpolator.embed[(String, String)](
+    Case(InTagBody, InTagBody) { p => StringLike(s""" ${p._1}="${p._2}" """): Input }
+  )
+  
+  implicit val embedStringMap = XmlInterpolator.embed[Map[String, String]](
+    Case(InTagBody, InTagBody) { m =>
+      StringLike(m.map { case (k, v) => k+"="+'"'+v+'"' }.mkString(" ", " ", " ")): Input }
+  )
+
+  sealed trait Input
+  case class StringLike(str: String) extends Input
+  case class XmlLike(xml: XmlSeq) extends Input
+
   sealed trait ContextType extends Context
   case object AttributeValue extends ContextType
   case object InTagName extends ContextType
@@ -84,7 +111,7 @@ object XmlInterpolator extends Interpolator {
           case WhitespaceChar()   => state.push()(InTagBody).reset()
           case ':'                => state(char) // FIXME: Namespaces
           case '/'                => if(state.current.isEmpty) state(ClosingTag) else
-                                        state(SelfClosingTagName)
+                                         state(SelfClosingTagName)
           case '>'                => state.push()(Body)
           case _                  => state.abort("not a valid tag name character")
         }
@@ -106,6 +133,7 @@ object XmlInterpolator extends Interpolator {
         case InAttributeName    => char match {
           case TagChar()          => state(char)
           case WhitespaceChar()   => state(InAttributeName)
+          case '>'                => state.abort("attribute value has not been specified")
           case '='                => state(AttributeEquals).reset()
           case ':'                => state(char) // FIXME: Namespaces
           case _                  => state.abort("not a valid attribute name character")
@@ -161,8 +189,12 @@ object XmlInterpolator extends Interpolator {
       case (state, Literal(_, literal)) =>
         parseLiteral(state, literal)
       
-      case (state, Hole(_, inputs)) =>
-        state.copy(context = inputs(state.context), holes = state.holes :+ state.context)
+      case (state, hole@Hole(_, inputs)) =>
+        val newContext = try inputs(state.context) catch {
+          case e: Exception =>
+            state.abort("cannot substitute values of this type in this position")
+        }
+        state.copy(context = newContext, holes = state.holes :+ state.context)
 
     }
 
@@ -174,6 +206,10 @@ object XmlInterpolator extends Interpolator {
   }
 
   def evaluate(interpolation: RuntimeInterpolation): XmlSeq =
-    Xml.parse(interpolation.literals.mkString)
+    Xml.parse(interpolation.parts.foldLeft("") {
+      case (acc, Literal(_, literal)) => acc+literal
+      case (acc, Substitution(_, StringLike(string))) => acc+string
+      case (acc, Substitution(_, XmlLike(xml))) => acc+xml
+    })
 
 }

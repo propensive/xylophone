@@ -134,11 +134,11 @@ object XmlParsingTests extends TestSuite {
   } returns false
 
   val `Get rest (*) of xml with inner nodes` = test {
-    Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).*.toString()
+    xml"<a><b>1</b></a><a><x>12</x></a>".a(1).*.toString()
   } returns "<x>12</x>"
 
   val `Get rest (*) of xml with text` = test {
-    Xml.parse("<a><b>1</b></a><a>12</a>").a(1).toString()
+    xml"<a><b>1</b></a><a>12</a>".a(1).toString()
   } returns "12"
 
 }
