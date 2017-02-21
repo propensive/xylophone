@@ -1,5 +1,11 @@
-package xylophone.backends.stdlib
+package xylophone.backends
 
-object `package` {
+import contextual._
+
+package object stdlib {
   implicit val implicitXmlStringParser: StdLibXmlStringParser.type = StdLibXmlStringParser
+
+  implicit class XmlStringContext(stringContext: StringContext) {
+    val xml = Prefix(XmlInterpolator, stringContext)
+  }
 }
