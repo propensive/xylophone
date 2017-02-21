@@ -27,11 +27,30 @@ case class XmlSeq($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic
 
 }
 
-object XmlSeq extends XmlSeqSerializers{
+object XmlSeq {
   
   private[xylophone] val Empty = XmlSeq(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
   private[xylophone] def apply(root: Seq[Ast.Node]): XmlSeq = XmlSeq(root, Vector())
+  
+  private[this] val TopOpenTag = "<self>"
+  private[this] val TopClosingTag = "</self>"
+
+  private[this] def wrapXmlByTag(str: String): String =
+    if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
+    else TopOpenTag + str + TopClosingTag
+
+  
+  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String],
+      namespace: Ast.Namespace): mode.Wrap[XmlSeq, ParseException] = mode.wrap {
+
+    val wrappedString = wrapXmlByTag(str)
+
+    parser.parse(wrappedString) match {
+      case Success(parsedXml) => XmlSeq(parsedXml.self.$normalize, Vector())
+      case Failure(_) => mode.exception(ParseException(str))
+    }
+  }
 }
 
 
@@ -74,26 +93,8 @@ case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
 
 object Xml {
 
-  private[this] val TopOpenTag = "<self>"
-  private[this] val TopClosingTag = "</self>"
-
-  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String],
-      namespace: Ast.Namespace): mode.Wrap[XmlSeq, ParseException] = mode.wrap {
-
-    val wrappedString = wrapXmlByTag(str)
-
-    parser.parse(wrappedString) match {
-      case Success(parsedXml) => XmlSeq(parsedXml.self.$normalize, Vector())
-      case Failure(_) => mode.exception(ParseException(str))
-    }
-  }
-
-  def apply[T](data: T)(implicit serializer: XmlSeq.SeqSerializer[T]): XmlSeq =
+  def apply[T](data: T)(implicit serializer: SeqSerializer[T]): XmlSeq =
     serializer.serialize(data)
-
-  private[this] def wrapXmlByTag(str: String): String =
-    if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
-    else TopOpenTag + str + TopClosingTag
 
   private[xylophone] def normalize($root: Seq[Ast.Node],
                                    $path: Vector[Ast.Path]): Seq[Ast.Node] =

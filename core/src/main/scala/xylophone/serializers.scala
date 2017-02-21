@@ -7,32 +7,41 @@ import scala.collection.immutable.ListMap
 import scala.language.higherKinds
 import scala.reflect.ClassTag
 
+import language.experimental.macros
+
 @implicitNotFound("Cannot find WrapTag typeclass for ${T}")
 case class WrapTag[T](name: String)
 
 @implicitNotFound("Cannot find SeqTag typeclass for ${T}")
 case class SeqTag[T](name: String)
 
-trait XmlSeqSerializers {
+trait SeqSerializer[T] { seqSerializer =>
+  
+  def serialize(t: T): XmlSeq
+
+  def contramap[T2](fn: T2 => T): SeqSerializer[T2] = t => seqSerializer.serialize(fn(t))
+}
+
+object SeqSerializer extends XmlSeqSerializers {
+  
+  def fromMap(map: ListMap[String, XmlSeq])(implicit namespace: Namespace): XmlSeq =
+    map.foldLeft(XmlSeq.Empty) {
+      case (xml, (k, v: XmlSeq)) =>
+        XmlSeq(xml.$root :+ Element(Name(namespace, k), Map(), v.$root))
+    }
+}
+
+trait XmlSeqSerializers_2 {
+  implicit def xmlSerializerMacro[T]: SeqSerializer[T] = macro XmlMacros.serializerMacro[T]
+}
+
+trait XmlSeqSerializers_1 extends XmlSeqSerializers_2 {
+}
+
+trait XmlSeqSerializers extends XmlSeqSerializers_1 {
 
   @implicitNotFound("Cannot serialize type ${T} to XmlSeq. Please provide an implicit "+
       "Serializer of type ${T} to XmlSeq")
-  trait SeqSerializer[T] { seqSerializer =>
-    
-    def serialize(t: T): XmlSeq
-
-    def contramap[T2](fn: T2 => T): SeqSerializer[T2] = t => seqSerializer.serialize(fn(t))
-  }
-
-  object SeqSerializer {
-    
-    def fromMap(map: ListMap[String, XmlSeq])(implicit namespace: Namespace): XmlSeq =
-      map.foldLeft(XmlSeq.Empty) {
-        case (xml, (k, v: XmlSeq)) =>
-          XmlSeq(xml.$root :+ Element(Name(namespace, k), Map(), v.$root))
-      }
-  }
-
   implicit def defaultSeqTag[T: ClassTag, F[_]]: SeqTag[F[T]] =
     SeqTag(implicitly[ClassTag[T]].runtimeClass.getSimpleName.toLowerCase())
   
@@ -74,7 +83,7 @@ trait XmlNodeSerializers {
       t => nodeSerializer.serialize(fn(t))
   }
 
-  implicit def seqToNode[T](implicit seqSerializer: XmlSeq.SeqSerializer[T],
+  implicit def seqToNode[T](implicit seqSerializer: SeqSerializer[T],
                                      wrapTag: WrapTag[T],
                                      namespace: Namespace): NodeSerializer[T] = { (t: T) =>
 
