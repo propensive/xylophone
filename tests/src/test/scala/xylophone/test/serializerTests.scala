@@ -2,9 +2,6 @@ package xylophone.test
 
 import rapture.test.{Programme, TestSuite}
 import xylophone._
-import xylophone.XmlSeq._
-
-import scala.collection.immutable.ListMap
 
 class XmlSerializationTestsRun extends Programme {
   include(XmlSerializationTests)
@@ -16,17 +13,6 @@ object XmlSerializationTests extends TestSuite {
 
   case class Address(id: Int, users: List[User])
   case class User(name: String)
-
-  implicit val userSerializer: XmlSeq.SeqSerializer[User] = (user: User) => {
-    SeqSerializer.fromMap(ListMap("name" -> stringSerializer.serialize(user.name)))
-  }
-
-  implicit val serializer: XmlSeq.SeqSerializer[Address] = (address: Address) => {
-    SeqSerializer.fromMap(ListMap(
-      "id" ->  implicitly[XmlSeq.SeqSerializer[Int]].serialize(address.id),
-      "users" -> XmlSeq(implicitly[XmlSeq.SeqSerializer[List[User]]].serialize(address.users).$root)
-    ))
-  }
 
   val `Should serialize custom case classes` = test {
     Xml(Address(1, List(User("Alice"), User("Dave")))).toString()

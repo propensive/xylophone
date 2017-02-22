@@ -54,7 +54,6 @@ object XmlSeq {
 }
 
 
-
 case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
   
   def apply(attribute: Symbol)(implicit namespace: Ast.Namespace): XmlAttribute =
@@ -74,7 +73,7 @@ case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynami
     Xml.normalize($root, $path).headOption
 }
 
-object XmlNode extends XmlNodeSerializers {
+object XmlNode {
 
   private[xylophone] val Empty = XmlNode(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlNode = XmlNode(Seq(element), Vector())
@@ -95,6 +94,9 @@ object Xml {
 
   def apply[T](data: T)(implicit serializer: SeqSerializer[T]): XmlSeq =
     serializer.serialize(data)
+
+  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String],
+                         namespace: Ast.Namespace): mode.Wrap[XmlSeq, ParseException] = XmlSeq.parse(str)
 
   private[xylophone] def normalize($root: Seq[Ast.Node],
                                    $path: Vector[Ast.Path]): Seq[Ast.Node] =

@@ -15,15 +15,14 @@ case class WrapTag[T](name: String)
 @implicitNotFound("Cannot find SeqTag typeclass for ${T}")
 case class SeqTag[T](name: String)
 
+@implicitNotFound("Cannot serialize type ${T} to XmlSeq. Please provide an implicit "+
+  "Serializer of type ${T} to XmlSeq")
 trait SeqSerializer[T] { seqSerializer =>
-  
   def serialize(t: T): XmlSeq
-
   def contramap[T2](fn: T2 => T): SeqSerializer[T2] = t => seqSerializer.serialize(fn(t))
 }
 
-object SeqSerializer extends XmlSeqSerializers {
-  
+object SeqSerializer {
   def fromMap(map: ListMap[String, XmlSeq])(implicit namespace: Namespace): XmlSeq =
     map.foldLeft(XmlSeq.Empty) {
       case (xml, (k, v: XmlSeq)) =>
@@ -31,20 +30,11 @@ object SeqSerializer extends XmlSeqSerializers {
     }
 }
 
-trait XmlSeqSerializers_2 {
-  implicit def xmlSerializerMacro[T]: SeqSerializer[T] = macro XmlMacros.serializerMacro[T]
-}
-
-trait XmlSeqSerializers_1 extends XmlSeqSerializers_2 {
-}
-
 trait XmlSeqSerializers extends XmlSeqSerializers_1 {
 
-  @implicitNotFound("Cannot serialize type ${T} to XmlSeq. Please provide an implicit "+
-      "Serializer of type ${T} to XmlSeq")
   implicit def defaultSeqTag[T: ClassTag, F[_]]: SeqTag[F[T]] =
     SeqTag(implicitly[ClassTag[T]].runtimeClass.getSimpleName.toLowerCase())
-  
+
   implicit val byteSerializer: SeqSerializer[Byte] = x => XmlSeq(Text(x.toString))
   implicit val shortSerializer: SeqSerializer[Short] = x => XmlSeq(Text(x.toString))
   implicit val intSerializer: SeqSerializer[Int] = x => XmlSeq(Text(x.toString))
@@ -56,7 +46,7 @@ trait XmlSeqSerializers extends XmlSeqSerializers_1 {
   implicit val bigDecimalSerializer: SeqSerializer[BigDecimal] = x => XmlSeq(Text(x.toString))
   implicit val bigIntSerializer: SeqSerializer[BigInt] = x => XmlSeq(Text(x.toString))
   implicit val nilSerializer: SeqSerializer[Nil.type] = XmlSeq(_)
-  
+
   implicit def optionSerializer[T](implicit ser: SeqSerializer[T]): SeqSerializer[Option[T]] =
     _.map(ser.serialize).getOrElse(XmlSeq(Text("")))
 
@@ -71,17 +61,21 @@ trait XmlSeqSerializers extends XmlSeqSerializers_1 {
     }
 }
 
+trait XmlSeqSerializers_1 {
+  implicit def xmlSerializerMacro[T]: SeqSerializer[T] = macro XmlMacros.serializerMacro[T]
+}
+
+
+@implicitNotFound("Cannot serialize type ${T} to XmlNode. Please provide an implicit "+
+  "Serializer of type ${T} to XmlNode")
+trait NodeSerializer[T] { nodeSerializer =>
+  def serialize(t: T): XmlNode
+  def contramap[T2](fn: T2 => T): NodeSerializer[T2] =
+    t => nodeSerializer.serialize(fn(t))
+}
+
+
 trait XmlNodeSerializers {
-
-  @implicitNotFound("Cannot serialize type ${T} to XmlNode. Please provide an implicit "+
-      "Serializer of type ${T} to XmlNode")
-  trait NodeSerializer[T] { nodeSerializer =>
-    
-    def serialize(t: T): XmlNode
-
-    def contramap[T2](fn: T2 => T): NodeSerializer[T2] =
-      t => nodeSerializer.serialize(fn(t))
-  }
 
   implicit def seqToNode[T](implicit seqSerializer: SeqSerializer[T],
                                      wrapTag: WrapTag[T],
