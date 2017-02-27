@@ -1,14 +1,10 @@
 package xylophone.test
 
-import rapture.test.{Programme, TestSuite}
+import rapture.test.TestSuite
 import xylophone._
 import xylophone.XmlSeq._
 
 import scala.collection.immutable.ListMap
-
-class XmlJoiningTestsRun extends Programme {
-  include(XmlJoiningTests)
-}
 
 object XmlJoiningTests extends TestSuite {
 

@@ -15,10 +15,11 @@ case class XmlSeq($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic
   def apply(index: Int = 0): XmlNode =
     XmlNode($root, $path :+ Index(index))
 
-  def * : XmlSeq = XmlSeq($root, $path :+ Children)
+  def * : XmlSeq =
+    XmlSeq($root, $path :+ Children)
 
   def applyDynamic(tag: String)(index: Int = 0)(implicit namespace: Ast.Namespace): XmlNode =
-    XmlNode($root, $path :+ Select(Name(namespace, tag)) :+ Index(index))
+    selectDynamic(tag)(namespace)(index)
 
   override def toString(): String =
     $normalize.map(_.string(Set())).mkString("")
@@ -40,26 +41,25 @@ object XmlSeq extends XmlSeqSerializers{
   private[xylophone] def apply(root: Seq[Ast.Node]): XmlSeq = XmlSeq(root, Vector())
 }
 
-
-
 case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
+  import Ast._
+
+  def selectDynamic(tag: String)(implicit namespace: Namespace): XmlSeq =
+    XmlSeq($root, $path :+ Select(Name(namespace, tag)))
+
+  def * : XmlSeq = XmlSeq($root, $path :+ Children)
   
-  def apply(attribute: Symbol)(implicit namespace: Ast.Namespace): XmlAttribute =
-    XmlAttribute(this, Ast.Name(namespace, attribute.name))
+  def applyDynamic(tag: String)(index: Int = 0)(implicit namespace: Namespace): XmlNode =
+    selectDynamic(tag)(namespace)(index)
 
-  def selectDynamic(tag: String)(implicit namespace: Ast.Namespace): XmlSeq =
-    XmlSeq($root, $path :+ Ast.Select(Ast.Name(namespace, tag)))
-
-  def applyDynamic(tag: String)(index: Int = 0)(implicit namespace: Ast.Namespace): XmlNode =
-    XmlNode($root, $path :+ Ast.Select(Ast.Name(namespace, tag)) :+ Ast.Index(index))
-
-  def * : XmlSeq = XmlSeq($root, $path)
+  def apply(attribute: Symbol)(implicit namespace: Namespace): XmlAttribute =
+    XmlAttribute(this, Name(namespace, attribute.name))
 
   override def toString(): String = $normalize.map(_.string(Set())).mkString("")
 
   def +(xmlNode: XmlNode): XmlSeq = XmlSeq($normalize.to[Seq] ++ xmlNode.$normalize, Vector())
   
-  private[xylophone] def $normalize: Option[Ast.Node] = Xml.normalize($root, $path).headOption
+  private[xylophone] def $normalize: Option[Node] = Xml.normalize($root, $path).headOption
 }
 
 object XmlNode extends XmlNodeSerializers {
@@ -72,14 +72,29 @@ object XmlNode extends XmlNodeSerializers {
     serializer.serialize(data)
 }
 
-
-case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
-  
-  private[xylophone] def $normalize: Option[String] =
-    xmlNode.$normalize.to[Seq].flatMap(_.attribute(attributeName)).headOption
-}
-
 object Xml {
+
+  private[xylophone] def normalize($root: Seq[Ast.Node],
+                                   $path: Vector[Ast.Path]): Seq[Ast.Node] = {
+    println("\nResolving:")
+    $path.foldLeft($root) {
+      case (element, Ast.Select(name)) =>
+        element.collect { case element@Ast.Element(n, _, _) =>
+          element.children.collect { case element@Ast.Element(n, _, _) =>
+            println(s"Comparing $n with $name: ${n == name}")
+            element
+          }
+        }.flatten
+      
+      case (element, Ast.Index( index)) =>
+        if(element.length > index) List(element(index)) else Nil
+
+      case (element, Ast.Children) =>
+        element.collect { case elem@Ast.Element(_, _, _) =>
+          elem.children
+        }.flatten
+    }
+  }
 
   private[this] val TopOpenTag = "<self>"
   private[this] val TopClosingTag = "</self>"
@@ -102,23 +117,12 @@ object Xml {
     if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
     else TopOpenTag + str + TopClosingTag
 
-  private[xylophone] def normalize($root: Seq[Ast.Node],
-                                   $path: Vector[Ast.Path]): Seq[Ast.Node] =
-    $path.foldLeft($root) {
-      case (element, Ast.Select(name)) =>
-        element.collect { case element@Ast.Element(`name`, _, _) =>
-          element.children
-        }.flatten
-      
-      case (element, Ast.Index( index)) =>
-        if(element.length > index) List(element(index)) else Nil
+}
 
-      case (element, Ast.Children) =>
-        element.collect { case elem@Ast.Element(_, _, _) =>
-          elem.children
-        }.flatten
-    }
-
+case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
+  
+  private[xylophone] def $normalize: Option[String] =
+    xmlNode.$normalize.to[Seq].flatMap(_.attribute(attributeName)).headOption
 }
 
 object Ast {

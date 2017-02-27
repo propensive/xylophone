@@ -3,10 +3,6 @@ package xylophone.test
 import rapture.test.{Programme, TestSuite}
 import xylophone._, backends.stdlib._
 
-class XmlParsingTestsRun extends Programme {
-  include(XmlParsingTests)
-}
-
 object XmlParsingTests extends TestSuite {
 
   val xmlSample =
