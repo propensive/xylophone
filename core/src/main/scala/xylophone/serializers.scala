@@ -16,32 +16,35 @@ case class WrapTag[T](name: String)
 @implicitNotFound("Cannot find SeqTag typeclass for ${T}")
 case class SeqTag[T](name: String)
 
+/** SAM typeclass interface for serialization to [[XmlSeq]]s */
+@implicitNotFound("Cannot serialize type ${T} to XmlSeq. Please provide an implicit "+
+  "Serializer of type ${T} to XmlSeq")
+trait SeqSerializer[T] { seqSerializer =>
+
+  /** abstract method to specify the conversion to [[XmlSeq]] */
+  def serialize(t: T): XmlSeq
+
+  /** constructs a new [[SeqSerializer]] from this, which pre-applies the [[fn]] function to
+    *  the value prior to serialization */
+  def contramap[T2](fn: T2 => T): SeqSerializer[T2] = t => seqSerializer.serialize(fn(t))
+}
+
+/** companion object to the [[SeqSerializer]] typeclass interface */
+object SeqSerializer {
+
+  def fromMap(map: ListMap[String, XmlSeq])(implicit namespace: Namespace): XmlSeq =
+    map.foldLeft(XmlSeq.Empty) {
+      case (xml, (k, v: XmlSeq)) =>
+        XmlSeq(xml.$root :+ Element(Name(namespace, k), Map(), v.$root))
+    }
+}
+
+trait XmlSeqSerializers_1 {
+  implicit def xmlSerializerMacro[T]: SeqSerializer[T] = macro XmlMacros.serializerMacro[T]
+}
 
 /** mixin providing serialization for [[XmlSeq]]s */
-trait XmlSeqSerializers {
-
-  /** SAM typeclass interface for serialization to [[XmlSeq]]s */
-  @implicitNotFound("Cannot serialize type ${T} to XmlSeq. Please provide an implicit "+
-      "Serializer of type ${T} to XmlSeq")
-  trait SeqSerializer[T] { seqSerializer =>
-    
-    /** abstract method to specify the conversion to [[XmlSeq]] */
-    def serialize(t: T): XmlSeq
-
-    /** constructs a new [[SeqSerializer]] from this, which pre-applies the [[fn]] function to
-     *  the value prior to serialization */
-    def contramap[T2](fn: T2 => T): SeqSerializer[T2] = t => seqSerializer.serialize(fn(t))
-  }
-
-  /** companion object to the [[SeqSerializer]] typeclass interface */
-  object SeqSerializer {
-    
-    def fromMap(map: ListMap[String, XmlSeq])(implicit namespace: Namespace): XmlSeq =
-      map.foldLeft(XmlSeq.Empty) {
-        case (xml, (k, v: XmlSeq)) =>
-          XmlSeq(xml.$root :+ Element(Name(namespace, k), Map(), v.$root))
-      }
-  }
+trait XmlSeqSerializers extends XmlSeqSerializers_1{
 
   /** implicit [[SeqTag]] instance which generates a surrounding tag name from the class name
    */
@@ -96,26 +99,26 @@ trait XmlSeqSerializers {
     }
 }
 
+/** SAM typeclass interface for serialization to [[XmlNode]]s */
+@implicitNotFound("Cannot serialize type ${T} to XmlNode. Please provide an implicit "+
+  "Serializer of type ${T} to XmlNode.")
+trait NodeSerializer[T] { nodeSerializer =>
+
+  /** abstract method to specify the conversion to [[XmlNode]] */
+  def serialize(t: T): XmlNode
+
+  /** constructs a new [[NodeSerializer]] from this, which pre-applies the [[fn]] function to
+    *  the value prior to serialization */
+  def contramap[T2](fn: T2 => T): NodeSerializer[T2] =
+    t => nodeSerializer.serialize(fn(t))
+}
+
 /** mixin providing serialization for [[XmlNode]]s */
 trait XmlNodeSerializers {
 
-  /** SAM typeclass interface for serialization to [[XmlNode]]s */
-  @implicitNotFound("Cannot serialize type ${T} to XmlNode. Please provide an implicit "+
-      "Serializer of type ${T} to XmlNode.")
-  trait NodeSerializer[T] { nodeSerializer =>
-   
-    /** abstract method to specify the conversion to [[XmlNode]] */
-    def serialize(t: T): XmlNode
-
-    /** constructs a new [[NodeSerializer]] from this, which pre-applies the [[fn]] function to
-     *  the value prior to serialization */
-    def contramap[T2](fn: T2 => T): NodeSerializer[T2] =
-      t => nodeSerializer.serialize(fn(t))
-  }
-
   /** typeclass generator for providing a valid [[NodeSerializer]] if corresponding [[WrapTag]]
    *  and [[SeqSerializer]] typeclass instances are available */
-  implicit def seqToNode[T](implicit seqSerializer: XmlSeq.SeqSerializer[T],
+  implicit def seqToNode[T](implicit seqSerializer: SeqSerializer[T],
                                      wrapTag: WrapTag[T],
                                      namespace: Namespace): NodeSerializer[T] = { (t: T) =>
 

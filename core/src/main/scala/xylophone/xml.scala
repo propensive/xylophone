@@ -98,18 +98,11 @@ object ~: {
   }
 }
 
-object XmlSeq extends XmlSeqSerializers {
+object XmlSeq {
   private[xylophone] val Empty = XmlSeq(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
   private[xylophone] def apply(root: Seq[Ast.Node]): XmlSeq = XmlSeq(root, Vector())
-  
-  private[this] val TopOpenTag = "<self>"
-  private[this] val TopClosingTag = "</self>"
-
-  private[this] def wrapXmlByTag(str: String): String =
-    if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
-    else TopOpenTag + str + TopClosingTag
-
+}
 /** represents a single XML node, specified by a root sequence of elements, and a path into
  *  those elements, pointing to a single node */
 case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
@@ -208,7 +201,7 @@ object Xml {
     }
   }
 
-  def apply[T](data: T)(implicit serializer: XmlSeq.SeqSerializer[T]): XmlSeq =
+  def apply[T](data: T)(implicit serializer: SeqSerializer[T]): XmlSeq =
     serializer.serialize(data)
 
   private[this] def wrapXmlByTag(str: String): String =
