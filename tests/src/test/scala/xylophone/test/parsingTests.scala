@@ -3,7 +3,7 @@ package xylophone.test
 import rapture.test.{Programme, TestSuite}
 import xylophone._, backends.stdlib._
 
-object XmlParsingTests extends TestSuite {
+object ParsingTests extends TestSuite {
 
   val xmlSample =
     """

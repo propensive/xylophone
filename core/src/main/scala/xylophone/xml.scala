@@ -6,58 +6,137 @@ import xylophone.Ast.DefaultNamespace
 import language.dynamics
 import scala.util.{Failure, Success}
 
+/** represents a sequence of XML nodes, specified as a root sequence of AST nodes, and a path
+ *  into that AST
+ *
+ *  This implements the [[scala.Dynamic]] trait, so may be dereferenced with a key of any
+ *  alphanumeric name.
+ *
+ *  Note that both parameters are "hidden" by their names being prefixed with a '$', thus
+ *  making it harder, but not impossible, to call them accidentally when intending to
+ *  dereference the XML node sequence.
+ *
+ *  @param $root  the root of the XML node sequence, from which the path dereferences
+ *  @param $path */
 case class XmlSeq($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
   import Ast._
 
+  /** filters the sequence of nodes to only return those with matching tag name and namespace
+   */
   def selectDynamic(tag: String)(implicit namespace: Namespace): XmlSeq =
-    XmlSeq($root, $path :+ Select(Name(namespace, tag)))
+    XmlSeq($root, $path :+ Filter(Name(namespace, tag)))
 
+  /** returns the [[XmlNode]] at element number [[index]]
+   *
+   *  @param index  the index of the element number in the [[XmlSeq]] to access
+   *  @return the [[XmlNode]] at index [[index]] */
   def apply(index: Int = 0): XmlNode =
     XmlNode($root, $path :+ Index(index))
 
+  /** gets the joined sequence of all children of this sequence
+   *
+   *  This finds the children of all [[XmlNode]]s in this sequence, dropping any
+   *  non-[[XmlNode]] elements, and returns them as a joined [[XmlSeq]].
+   *
+   *  @return the joined [[XmlSeq]] of all the nodes' children */
   def * : XmlSeq =
     XmlSeq($root, $path :+ Children)
 
+  /** composes the [[selectDynamic]] method with the application of the [[apply]] method
+   *
+   *  @param tag        the tag name to dereference
+   *  @param index      the index of the element to return, after dereferencing
+   *  @param namespace  the namespace for the dereferencing tag name */
   def applyDynamic(tag: String)(index: Int = 0)(implicit namespace: Ast.Namespace): XmlNode =
     selectDynamic(tag)(namespace)(index)
 
+  /** returns a string representation of this XML node */
   override def toString(): String =
     $normalize.map(_.string(Set())).mkString("")
 
-  def :+(xmlNode: XmlNode): XmlSeq = XmlSeq($normalize ++ xmlNode.$normalize, Vector())
+  /** joins an [[XmlNode]] to the end of this [[XmlSeq]]
+   *
+   *  This is the equivalent of the `:+` method in the Scala collections library.
+   *
+   *  @param xmlNode  the XML node to append to the right of this
+   *  @return the joined XML node sequence */
+  def :~(xmlNode: XmlNode): XmlSeq = XmlSeq($normalize ++ xmlNode.$normalize, Vector())
   
-  def +:(xmlNode: XmlNode): XmlSeq =
+  /** joins an [[XmlNode]] to the start of this [[XmlSeq]]
+   *
+   *  This is the equivalent of the `+:` method in the Scala collections library.
+   *
+   *  @param xmlNode  the XML node to append to the left of this
+   *  @return the joined XML node sequence */
+  def ~:(xmlNode: XmlNode): XmlSeq =
     XmlSeq(xmlNode.$normalize.to[Seq] ++ $normalize, Vector())
-  
-  def ++(xmlSeq: XmlSeq): XmlSeq = XmlSeq($normalize ++ xmlSeq.$normalize, Vector())
+ 
+  /** joins two [[XmlSeq]]s together
+   *
+   *  This is the equivalent of the `++` method in the Scala collections library.
+   *
+   *  @param xmlSeq  the XML sequence to append to the right of this
+   *  @return the joined XML sequence */
+  def ~~(xmlSeq: XmlSeq): XmlSeq = XmlSeq($normalize ++ xmlSeq.$normalize, Vector())
   
   private[xylophone] def $normalize: Seq[Node] = Xml.normalize($root, $path)
 }
 
-object XmlSeq extends XmlSeqSerializers{
-  
+object :~ {
+  /** decomposes an [[XmlSeq]] into its `init` and `last` parts */
+  def unapply(xmlSeq: XmlSeq): Option[(XmlSeq, XmlNode)] = xmlSeq.$normalize match {
+    case init :+ last => Some((XmlSeq(init, Vector()), XmlNode(Seq(last), Vector())))
+    case _ => None
+  }
+}
+
+object ~: {
+  /** decomposes an [[XmlSeq]] into its `head` and `tail` parts */
+  def unapply(xmlSeq: XmlSeq): Option[(XmlNode, XmlSeq)] = xmlSeq.$normalize match {
+    case head +: tail => Some((XmlNode(Seq(head), Vector()), XmlSeq(tail, Vector())))
+    case _ => None
+  }
+}
+
+object XmlSeq extends XmlSeqSerializers {
   private[xylophone] val Empty = XmlSeq(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
   private[xylophone] def apply(root: Seq[Ast.Node]): XmlSeq = XmlSeq(root, Vector())
 }
 
+/** represents a single XML node, specified by a root sequence of elements, and a path into
+ *  those elements, pointing to a single node */
 case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
   import Ast._
 
+  /** selects child nodes of with the tag name, [[tag]] in the namespace, [[namespace]]
+   *
+   *  @param tag        the name of the tag to access
+   *  @param namespace  the namespace for the specified tag name
+   *  @return the children of this node with the matching tag names and namespaces */
   def selectDynamic(tag: String)(implicit namespace: Namespace): XmlSeq =
     XmlSeq($root, $path :+ Select(Name(namespace, tag)))
 
+  /** gets all children of this node */
   def * : XmlSeq = XmlSeq($root, $path :+ Children)
-  
+ 
+  /** composes dereferencing and indexing this [[XmlNode]]
+   *
+   *  @param tag        the name of the tags to dereference
+   *  @param index      the element number to subsequently get
+   *  @param namespace  the namespace for the tag name */
   def applyDynamic(tag: String)(index: Int = 0)(implicit namespace: Namespace): XmlNode =
     selectDynamic(tag)(namespace)(index)
 
+  /** gets the attribute with the specified name in the given namespace */
   def apply(attribute: Symbol)(implicit namespace: Namespace): XmlAttribute =
     XmlAttribute(this, Name(namespace, attribute.name))
 
+  /** provides a string representation of this node */
   override def toString(): String = $normalize.map(_.string(Set())).mkString("")
 
-  def +(xmlNode: XmlNode): XmlSeq = XmlSeq($normalize.to[Seq] ++ xmlNode.$normalize, Vector())
+  /** joins this node to another node to produce an [[XmlSeq]] */
+  def ~(xmlNode: XmlNode): XmlSeq = XmlSeq($normalize.to[Seq] ++ xmlNode.$normalize, Vector())
   
   private[xylophone] def $normalize: Option[Node] = Xml.normalize($root, $path).headOption
 }
@@ -68,6 +147,10 @@ object XmlNode extends XmlNodeSerializers {
   private[xylophone] def apply(element: Ast.Node): XmlNode = XmlNode(Seq(element), Vector())
   private[xylophone]  def apply(root: Seq[Ast.Node]): XmlNode = XmlNode(root, Vector())
 
+  /** creates a new [[XmlNode]], serializing the value [[data]].
+   *
+   *  @param data  the value to serialize to XML
+   *  @tparam T  the type of the value to serialize */
   def apply[T](data: T)(implicit serializer: NodeSerializer[T]): XmlNode =
     serializer.serialize(data)
 }
@@ -76,12 +159,16 @@ object Xml {
 
   private[xylophone] def normalize($root: Seq[Ast.Node],
                                    $path: Vector[Ast.Path]): Seq[Ast.Node] = {
-    println("\nResolving:")
     $path.foldLeft($root) {
+      case (element, Ast.Filter(name)) =>
+        element.filter {
+          case elem@Ast.Element(n, _, _) => n == name
+          case _ => false
+        }
+
       case (element, Ast.Select(name)) =>
         element.collect { case element@Ast.Element(n, _, _) =>
-          element.children.collect { case element@Ast.Element(n, _, _) =>
-            println(s"Comparing $n with $name: ${n == name}")
+          element.children.collect { case element@Ast.Element(`name`, _, _) =>
             element
           }
         }.flatten
@@ -99,14 +186,19 @@ object Xml {
   private[this] val TopOpenTag = "<self>"
   private[this] val TopClosingTag = "</self>"
 
-  def parse(str: String)(implicit mode: Mode[_ <: MethodConstraint], parser: Parser[String],
-      namespace: Ast.Namespace): mode.Wrap[XmlSeq, ParseException] = mode.wrap {
+  /** parses a String into an [[XmlSeq]] value
+   *
+   *  @param src   the source value to read from
+   *  @param mode  the mode for mitigating errors
+   *  @param parser  the implicit parser used to interpret the source */
+  def parse(src: String)(implicit mode: Mode[_ <: MethodConstraint],
+      parser: Parser[String]): mode.Wrap[XmlSeq, ParseException] = mode.wrap {
 
-    val wrappedString = wrapXmlByTag(str)
+    val wrappedString = wrapXmlByTag(src)
 
     parser.parse(wrappedString) match {
-      case Success(parsedXml) => XmlSeq(parsedXml.self.$normalize, Vector())
-      case Failure(_) => mode.exception(ParseException(str))
+      case Success(parsedXml) => XmlSeq(parsedXml.$normalize, Vector())
+      case Failure(_) => mode.exception(ParseException(src))
     }
   }
 
@@ -123,76 +215,5 @@ case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
   
   private[xylophone] def $normalize: Option[String] =
     xmlNode.$normalize.to[Seq].flatMap(_.attribute(attributeName)).headOption
-}
 
-object Ast {
-
-  sealed trait Path
-  case class Select(name: Name) extends Path
-  case class Index(index: Int) extends Path
-  case object Children extends Path
-
-  object Namespace { val XmlnsNamespace: Namespace = Namespace("xmlns", None) }
-
-  implicit object DefaultNamespace extends Namespace("", None) {
-    
-    override def prefix(tag: String): String = tag
-  }
-
-  case class Namespace(alias: String, namespace: Option[String]) {
-
-    def prefix(tag: String): String = if (alias.trim.isEmpty) tag else s"$alias:$tag"
-
-    def xmlnsAttribute: Option[(Name, String)] = namespace.map { nsString =>
-      (Name(Namespace.XmlnsNamespace, alias), nsString)
-    }
-  }
-
-  case class Name(namespace: Namespace, name: String) {
-    override def toString: String = namespace.prefix(name)
-  }
-
-  sealed trait Node {
-    def attribute(name: Name): Option[String] = None
-    def string(namespaces: Set[Namespace]): String
-  }
-
-  case class Element(name: Name,
-                     attributes: Map[Name, String],
-                     children: Seq[Node]) extends Node {
-
-    override def attribute(name: Name): Option[String] = attributes.get(name)
-
-    def string(namespaces: Set[Namespace]): String = {
-      
-      val allAttributes = if(namespaces contains name.namespace) {
-        attributes ++ name.namespace.xmlnsAttribute
-      } else attributes
-
-      val attributesString = if(allAttributes.nonEmpty) allAttributes.map {
-        case (key, value) => s"""$key="$value""""
-      }.mkString(" ", " ", "") else ""
-
-      val content = children.map(_.string(namespaces).mkString("")).mkString("")
-
-      s"<$name$attributesString>$content</$name>"
-    }
-  }
-
-  case class Text(text: String) extends Node {
-    def string(namespaces: Set[Namespace]): String = text
-    override def toString: String = string(Set())
-  }
-
-  case class ProessingInstruction(target: String, content: String) extends Node {
-    def string(namespaces: Set[Namespace]): String = s"<! $target $content !>"
-  }
-
-  case class Comment(content: String) extends Node {
-    def string(namespaces: Set[Namespace]): String = s"<!--$content-->"
-  }
-
-  case class Entity(name: String) extends Node {
-    def string(namespaces: Set[Namespace]): String = s"&$name;"
-  }
 }

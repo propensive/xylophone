@@ -7,22 +7,25 @@ import scala.xml.{Node => ScalaNode, Text => ScalaText, _}
 
 private[stdlib] object StdLibXmlStringParser extends Parser[String] {
 
+  /** implements the XML parsing API by wrapping the Scala standard library API */
   def parse(str: String): Try[XmlSeq] =
-    Try(Utility.trim(XML.loadString(str))).map(elem => XmlSeq(Seq(convert(elem)), Vector()))
+    Try(Utility.trim(XML.loadString(str))).map { elem =>
+      val Element(_, _, children) = convert(elem)
+      val xmlSeq = XmlSeq(children, Vector())
+      xmlSeq
+    }
 
-  //TODO: remove recursion
-  private def convert(elem: ScalaNode): Node = {
-    val tagName = elem.label
+  private[this] def convert(elem: ScalaNode): Node = {
     val attributes = extractAttributes(elem.attributes)
     val namespace = parseNamespace(elem)
 
-    Element(Name(namespace, tagName), attributes, elem.child.map {
+    Element(Name(namespace, elem.label), attributes, elem.child.map {
       case node: ScalaText => Text(node.text)
       case node => convert(node)
     })
   }
 
-  private def extractAttributes(attrs: MetaData): Map[Name, String] = {
+  private[this] def extractAttributes(attrs: MetaData): Map[Name, String] = {
     
     def parseNamespace(str: String): Namespace = str.indexOf(':') match {
       case -1 => DefaultNamespace
@@ -32,7 +35,7 @@ private[stdlib] object StdLibXmlStringParser extends Parser[String] {
     attrs.map { x => (Name(parseNamespace(x.prefixedKey), x.key), x.value.text) }.toMap
   }
 
-  private def parseNamespace(node: ScalaNode): Namespace =
+  private[this] def parseNamespace(node: ScalaNode): Namespace =
     if (node.prefix != null && node.prefix.nonEmpty) Namespace(node.prefix, None)
     else DefaultNamespace
 }

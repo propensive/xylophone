@@ -6,7 +6,7 @@ import xylophone.XmlSeq._
 
 import scala.collection.immutable.ListMap
 
-object XmlSerializationTests extends TestSuite {
+object SerializationTests extends TestSuite {
 
   implicit val implicitParser: Parser[String] = backends.stdlib.implicitXmlStringParser
 
@@ -73,7 +73,6 @@ object XmlSerializationTests extends TestSuite {
   val `Test implicit String serializer` = test(Xml[String]("hello").toString()).returns("hello")
   val `Test implicit BigDecimal serializer` = test(Xml[BigDecimal](BigDecimal(1212)).toString()).returns("1212")
   val `Test implicit BigInt serializer` = test(Xml[BigInt](BigInt(2323)).toString()).returns("2323")
-  val `Test implicit Nil serializer` = test(Xml[Nil.type](Nil).toString()).returns("")
   val `Test implicit Some(...) serializer` = test(Xml[Option[String]](Some("abc")).toString()).returns("abc")
   val `Test implicit None serializer` = test(Xml[Option[String]](None).toString()).returns("")
 

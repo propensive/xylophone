@@ -28,6 +28,6 @@ object AccessTests extends TestSuite {
   }.returns("""<b>1</b><c>2</c><xs><x id="1"><b>3</b><d>4</d></x><x id="2"><b>5</b><d>6</d></x><x><b>7</b><d>8</d></x></xs>""")
 
   val `Get root seq node` = test {
-    sample.b.toString
+    sample().*.toString
   }.returns("""<b>1</b><c>2</c><xs><x id="1"><b>3</b><d>4</d></x><x id="2"><b>5</b><d>6</d></x><x><b>7</b><d>8</d></x></xs>""")
 }
