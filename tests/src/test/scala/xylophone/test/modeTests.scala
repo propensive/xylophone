@@ -1,11 +1,7 @@
 package xylophone.test
 
-import rapture.test.{Programme, TestSuite}
-import xylophone.{Parser, Xml}
-
-class XmlParsingModeTestsRun extends Programme {
-  include(new XmlParsingTests(xylophone.backends.stdlib.implicitXmlStringParser))
-}
+import rapture.test.TestSuite
+import xylophone._, backends.stdlib._
 
 class XmlParsingModeTests(parser: Parser[String])  extends TestSuite {
 
