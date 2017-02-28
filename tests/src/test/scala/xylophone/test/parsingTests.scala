@@ -1,15 +1,9 @@
 package xylophone.test
 
 import rapture.test.{Programme, TestSuite}
-import xylophone.{ParseException, Parser, Xml}
+import xylophone._, backends.stdlib._
 
-class XmlParsingTestsRun extends Programme {
-  include(new XmlParsingTests(xylophone.backends.stdlib.implicitXmlStringParser))
-}
-
-class XmlParsingTests(parser: Parser[String]) extends TestSuite {
-
-  implicit val implicitParser: Parser[String] = parser
+object ParsingTests extends TestSuite {
 
   val xmlSample =
     """
@@ -64,7 +58,7 @@ class XmlParsingTests(parser: Parser[String]) extends TestSuite {
   //
 
   val `Xml parser should parse strings with self closed tag` = test {
-    Xml.parse("just some text <ab></ab> yes").toString()
+    xml"just some text <ab></ab> yes".toString()
   } returns "just some text<ab></ab>yes"
 
   val `Xml API should be able to extract data by tag name` = test {
@@ -77,20 +71,20 @@ class XmlParsingTests(parser: Parser[String]) extends TestSuite {
 
 
   val `Getting not existing tag should return an empty XML` = test {
-    Xml.parse("<a>hello</a>").abc.toString()
+    xml"<a>hello</a>".abc.toString()
   } returns ""
 
 
-  val `Parsing of invalid xml should lead to failure` = test {
-    Xml.parse("<a> wwww <b>")
-  } throws ParseException("<a> wwww <b>")
+  /*val `Parsing of invalid xml should lead to failure` = test {
+    xml"<a> wwww <b>"
+  } throws ParseException("<a> wwww <b>")*/
 
   val `Parsing XML with attributes ` = test {
-    Xml.parse("""<abc a="11"><dd k="123" l="77"><a w="22">hello</a><a w="1">open</a></dd></abc>""").toString()
+    xml"""<abc a="11"><dd k="123" l="77"><a w="22">hello</a><a w="1">open</a></dd></abc>""".toString()
   } returns """<abc a="11"><dd l="77" k="123"><a w="22">hello</a><a w="1">open</a></dd></abc>"""
 
   val `Parsing XML with attributes and namespaces` = test {
-    Xml.parse("""<z:Attachment rdf:about="#item_1" rdf:id="10">xxxxx</z:Attachment>""").toString()
+    xml"""<z:Attachment rdf:about="#item_1" rdf:id="10">xxxxx</z:Attachment>""".toString()
   } returns """<z:Attachment rdf:id="10" rdf:about="#item_1">xxxxx</z:Attachment>"""
 
 
@@ -136,11 +130,11 @@ class XmlParsingTests(parser: Parser[String]) extends TestSuite {
   } returns false
 
   val `Get rest (*) of xml with inner nodes` = test {
-    Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).*.toString()
+    xml"<a><b>1</b></a><a><x>12</x></a>".a(1).*.toString()
   } returns "<x>12</x>"
 
   val `Get rest (*) of xml with text` = test {
-    Xml.parse("<a><b>1</b></a><a>12</a>").a(1).toString()
+    xml"<a><b>1</b></a><a>12</a>".a(1).toString()
   } returns "12"
 
 }
