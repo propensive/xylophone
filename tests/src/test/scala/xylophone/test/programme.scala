@@ -7,5 +7,5 @@ class TestProgramme extends Programme {
   include(SplittingTests)
   include(JoiningTests)
   include(SerializationTests)
-  //include(ParsingTests)
+  include(ParsingTests)
 }

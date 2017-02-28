@@ -36,7 +36,7 @@ object ParsingTests extends TestSuite {
 
   val `Xml parser should trim text nodes` = test {
     Xml.parse("<pod>Three <peas></peas> in the </pod>").toString()
-  } returns "<pod>Three<peas></peas>in the</pod>"
+  } returns "<pod>Three<peas/>in the</pod>"
 
   val `Parsed Xml should be equal to internal structure` = test {
     Xml.parse("<a><b>10</b><b>11</b></a>").toString()
@@ -48,7 +48,7 @@ object ParsingTests extends TestSuite {
 
   val `Xml parser should parse empty tags` = test {
     Xml.parse("<a></a>").toString()
-  } returns "<a></a>"
+  } returns "<a/>"
 
 
   //  //TODO: Need to add self closing mode?? or track it some how
@@ -59,14 +59,14 @@ object ParsingTests extends TestSuite {
 
   val `Xml parser should parse strings with self closed tag` = test {
     xml"just some text <ab></ab> yes".toString()
-  } returns "just some text<ab></ab>yes"
+  } returns "just some text<ab/>yes"
 
   val `Xml API should be able to extract data by tag name` = test {
-    Xml.parse(xmlSample).a.c.e.w.toString()
+    Xml.parse(xmlSample).a.*.c.*.e.*.w.*.toString()
   } returns "<k><o>hahaha</o></k><k><o>seven days</o></k>"
 
   val `Xml API should be able to extract data from array/sequence by index` = test {
-    Xml.parse(xmlSample).a.c.e.w.k.o(0).toString()
+    Xml.parse(xmlSample).a().c().e().w().k().o().*.toString()
   } returns "hahaha"
 
 
@@ -117,7 +117,7 @@ object ParsingTests extends TestSuite {
 
   val `Get the node by index` = test {
     Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).toString()
-  } returns "<x>12</x>"
+  } returns "<a><x>12</x></a>"
 
   //TODO Throw exception for this case.
   //  val `Get the node by index that doesn't exist` = test {
@@ -134,7 +134,7 @@ object ParsingTests extends TestSuite {
   } returns "<x>12</x>"
 
   val `Get rest (*) of xml with text` = test {
-    xml"<a><b>1</b></a><a>12</a>".a(1).toString()
+    xml"<a><b>1</b></a><a>12</a>".a(1).*.toString()
   } returns "12"
 
 }
