@@ -6,7 +6,7 @@ import xylophone._
 import scala.collection.immutable.ListMap
 
 object SerializationTests extends TestSuite {
-
+  
   case class Address(id: Int, users: List[User])
   case class User(name: String)
 

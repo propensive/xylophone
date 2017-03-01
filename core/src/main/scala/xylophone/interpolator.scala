@@ -7,13 +7,6 @@ import contextual._
  *  substitutions within it. */
 object XmlInterpolator extends Interpolator {
 
-  /** defines how [[String]]s may be embedded in different contexts */
-  implicit val embedStrings = XmlInterpolator.embed[String](
-    Case(AttributeEquals, TagBody) { s => StringLike('"'+s+'"') },
-    Case(AttributeValue, AttributeValue) { s => StringLike(s) },
-    Case(Body, Body) { s => StringLike(s) }
-  )
-
   /** defines how [[XmlSeq]]s may be embedded in [[Body]] context */
   implicit val embedXmlSeqs = XmlInterpolator.embed[XmlSeq](
     Case(Body, Body) { x => XmlLike(x) }
