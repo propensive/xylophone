@@ -16,13 +16,20 @@ case class WrapTag[T](name: String)
 @implicitNotFound("Cannot find SeqTag typeclass for ${T}")
 case class SeqTag[T](name: String)
 
+object SeqTag {
+  /** implicit [[SeqTag]] instance which generates a surrounding tag name from the class name
+   */
+  implicit def defaultSeqTag[T: ClassTag, F[_]]: SeqTag[F[T]] =
+    SeqTag(implicitly[ClassTag[T]].runtimeClass.getSimpleName.toLowerCase())
+}
+
 /** mixin providing serialization for [[XmlSeq]]s */
-trait XmlSeqSerializers {
+trait XmlSeqSerializers extends XmlSeqSerializers_1 {
 
   /** SAM typeclass interface for serialization to [[XmlSeq]]s */
   @implicitNotFound("Cannot serialize type ${T} to XmlSeq. Please provide an implicit "+
       "Serializer of type ${T} to XmlSeq")
-  trait SeqSerializer[T] { seqSerializer =>
+  trait SeqSerializer[-T] { seqSerializer =>
     
     /** abstract method to specify the conversion to [[XmlSeq]] */
     def serialize(t: T): XmlSeq
@@ -42,11 +49,6 @@ trait XmlSeqSerializers {
       }
   }
 
-  /** implicit [[SeqTag]] instance which generates a surrounding tag name from the class name
-   */
-  implicit def defaultSeqTag[T: ClassTag, F[_]]: SeqTag[F[T]] =
-    SeqTag(implicitly[ClassTag[T]].runtimeClass.getSimpleName.toLowerCase())
-  
   /** serializes bytes to XML text */
   implicit def byteSerializer: SeqSerializer[Byte] = x => XmlSeq(Text(x.toString))
 
@@ -77,11 +79,17 @@ trait XmlSeqSerializers {
   /** serializes [[BigInt]]s to XML text */
   implicit def bigIntSerializer: SeqSerializer[BigInt] = x => XmlSeq(Text(x.toString))
 
+  /** serializes [[None]]s to XML text */
+  implicit def noneSerializer: SeqSerializer[None.type] = x => XmlSeq(Text(""))
+}
+
+trait XmlSeqSerializers_1 { this: XmlSeqSerializers =>
+
   /** serializes [[Option]]s to their value in the [[Some]] case, or an empty sequence
    *  otherwise */
   implicit def optionSerializer[T](implicit ser: SeqSerializer[T]): SeqSerializer[Option[T]] =
     _.map(ser.serialize).getOrElse(XmlSeq(Seq(), Vector()))
-
+  
   /** serializes any traversible from the Scala collections library to an XML sequence,
    *  provided the element type can be serialized */
   implicit def traversableSerializer[Type, S[T] <: Traversable[T]](
@@ -102,7 +110,7 @@ trait XmlNodeSerializers {
   @implicitNotFound("Cannot serialize type ${T} to XmlNode. Please provide an implicit "+
       "Serializer of type ${T} to XmlNode.")
   trait NodeSerializer[T] { nodeSerializer =>
-   
+
     /** abstract method to specify the conversion to [[XmlNode]] */
     def serialize(t: T): XmlNode
 
@@ -121,5 +129,4 @@ trait XmlNodeSerializers {
     val children = seqSerializer.serialize(t).$root
     XmlNode(Seq(Element(Name(namespace, wrapTag.name), Map(), children)), Vector())
   }
-
 }

@@ -1,11 +1,11 @@
-package xylophone.backends.stdlib
+package xylophone
 
 import xylophone._, Ast._
 
 import scala.util.Try
 import scala.xml.{Node => ScalaNode, Text => ScalaText, _}
 
-private[stdlib] object StdLibXmlStringParser extends Parser[String] {
+private[xylophone] object StdLibXmlStringParser extends Parser[String] {
 
   /** implements the XML parsing API by wrapping the Scala standard library API */
   def parse(str: String): Try[XmlSeq] =

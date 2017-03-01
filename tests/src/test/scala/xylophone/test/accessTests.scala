@@ -1,6 +1,6 @@
 package xylophone.test
 
-import xylophone._, backends.stdlib._
+import xylophone._
 
 import rapture.test._
 
