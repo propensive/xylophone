@@ -1,6 +1,6 @@
 package xylophone
 
-import xylophone.Ast.{Element, Name, Namespace, Text}
+import xylophone.Ast._
 
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.ListMap
@@ -48,9 +48,11 @@ trait XmlSeqSerializers extends XmlSeqSerializers_1{
 
   /** implicit [[SeqTag]] instance which generates a surrounding tag name from the class name
    */
-  implicit def defaultSeqTag[T: ClassTag, F[_]]: SeqTag[F[T]] =
-    SeqTag(implicitly[ClassTag[T]].runtimeClass.getSimpleName.toLowerCase())
-  
+  implicit def defaultSeqTag[T: ClassTag, F[t] <: Traversable[t]]: SeqTag[F[T]] = SeqTag("item")
+ 
+  /** wrapping tag for lists */
+  implicit def listTag[T]: SeqTag[List[T]] = SeqTag("item")
+
   /** serializes bytes to XML text */
   implicit val byteSerializer: SeqSerializer[Byte] = x => XmlSeq(Text(x.toString))
 
