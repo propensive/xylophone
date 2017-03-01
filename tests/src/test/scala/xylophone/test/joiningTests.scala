@@ -2,16 +2,13 @@ package xylophone.test
 
 import rapture.test.TestSuite
 import xylophone._
-import xylophone.XmlSeq._
 
 import scala.collection.immutable.ListMap
 
 object JoiningTests extends TestSuite {
 
-  implicit val implicitParser: Parser[String] = backends.stdlib.implicitXmlStringParser
-
-  val seq: XmlSeq = Xml.parse("<user><name>Fred</name><age>5</age></user>")
-  val node: XmlNode = Xml.parse("<company><name>Propensive Ltd</name></company>").apply()
+  val seq: XmlSeq = xml"<user><name>Fred</name><age>5</age></user>"
+  val node: XmlNode = xml"<company><name>Propensive Ltd</name></company>".apply()
 
   val `Joining two nodes` = test {
     (node ~ node).toString

@@ -1,8 +1,6 @@
-package xylophone.backends
-
 import contextual._
 
-package object stdlib {
+package object xylophone {
   implicit val implicitXmlStringParser: StdLibXmlStringParser.type = StdLibXmlStringParser
 
   implicit class XmlStringContext(stringContext: StringContext) {

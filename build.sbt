@@ -15,19 +15,9 @@ lazy val core = project
   .settings(scalaMacroDependencies: _*)
   .settings(moduleName := "xylophone")
   .settings(libraryDependencies ++= Seq(
-    "com.propensive" %% "rapture-core" % versions.rapture
-  ))
-
-lazy val stdlib = project
-  .in(file("stdlib"))
-  .settings(buildSettings: _*)
-  .settings(publishSettings: _*)
-  .settings(moduleName := "xylophone-stdlib")
-  .settings(libraryDependencies ++= Seq(
     "com.propensive" %% "rapture-core" % versions.rapture,
     "com.propensive" %% "contextual" % versions.contextual
   ))
-  .dependsOn(core)
 
 lazy val tests = project
   .in(file("tests"))
@@ -38,7 +28,7 @@ lazy val tests = project
   .settings(libraryDependencies ++= Seq(
     "com.propensive" %% "rapture-test" % versions.rapture % "test"
   ))
-  .dependsOn(core, stdlib)
+  .dependsOn(core)
 
 lazy val buildSettings = Seq(
   organization := "com.propensive",
