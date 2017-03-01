@@ -10,14 +10,14 @@ object SerializationTests extends TestSuite {
   case class Address(id: Int, users: List[User])
   case class User(name: String)
 
-  implicit val userSerializer: XmlSeq.SeqSerializer[User] = (user: User) => {
-    XmlSeq.SeqSerializer.fromMap(ListMap("name" -> XmlSeq.stringSerializer.serialize(user.name)))
+  implicit val userSerializer: XmlSeq.Serializer[User] = (user: User) => {
+    XmlSeq.Serializer.fromMap(ListMap("name" -> XmlSeq.stringSerializer.serialize(user.name)))
   }
 
-  implicit val serializer: XmlSeq.SeqSerializer[Address] = (address: Address) => {
-    XmlSeq.SeqSerializer.fromMap(ListMap(
-      "id" ->  implicitly[XmlSeq.SeqSerializer[Int]].serialize(address.id),
-      "users" -> XmlSeq(implicitly[XmlSeq.SeqSerializer[List[User]]].serialize(address.users).$root)
+  implicit val serializer: XmlSeq.Serializer[Address] = (address: Address) => {
+    XmlSeq.Serializer.fromMap(ListMap(
+      "id" ->  implicitly[XmlSeq.Serializer[Int]].serialize(address.id),
+      "users" -> XmlSeq(implicitly[XmlSeq.Serializer[List[User]]].serialize(address.users).$root)
     ))
   }
 

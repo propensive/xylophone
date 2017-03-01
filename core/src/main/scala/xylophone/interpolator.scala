@@ -19,6 +19,10 @@ object XmlInterpolator extends Interpolator {
     Case(Body, Body) { x => XmlLike(x) }
   )
 
+  implicit def embedXmlSeqConvertibles[T: XmlSeq.Serializer] = XmlInterpolator.embed[T](
+    Case(Body, Body) { x => XmlLike(implicitly[XmlSeq.Serializer[T]].serialize(x)) }
+  )
+
   /** defines how [[XmlNode]]s may be embedded in [[Body]] context */
   implicit val embedXmlNodes = XmlInterpolator.embed[XmlNode](
     Case(Body, Body) { x => XmlLike(XmlSeq(x.$root, x.$path)) }
