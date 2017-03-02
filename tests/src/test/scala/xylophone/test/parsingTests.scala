@@ -1,7 +1,7 @@
 package xylophone.test
 
 import rapture.test.{Programme, TestSuite}
-import xylophone._, backends.stdlib._
+import xylophone._
 
 object ParsingTests extends TestSuite {
 
@@ -31,42 +31,42 @@ object ParsingTests extends TestSuite {
   val `Xml with complex formatting should be parsed` = test {
     val sourceXml =
       "<a>\n \t  <b>10</b>\n   <b>11</b>\n   <c>\n  \t    <k>3</k>\n      <l>\n         <w><p>133</p><p>555</p></w>\n  <r>3123</r>     </l>\n   </c>\n   <d/>\n</a>"
-    Xml.parse(sourceXml)
-  } returns Xml.parse("<a><b>10</b><b>11</b><c><k>3</k><l><w><p>133</p><p>555</p></w><r>3123</r></l></c><d/></a>")
+    XmlSeq.parse(sourceXml)
+  } returns XmlSeq.parse("<a><b>10</b><b>11</b><c><k>3</k><l><w><p>133</p><p>555</p></w><r>3123</r></l></c><d/></a>")
 
   val `Xml parser should trim text nodes` = test {
-    Xml.parse("<pod>Three <peas></peas> in the </pod>").toString()
-  } returns "<pod>Three<peas></peas>in the</pod>"
+    XmlSeq.parse("<pod>Three <peas></peas> in the </pod>").toString()
+  } returns "<pod>Three<peas/>in the</pod>"
 
   val `Parsed Xml should be equal to internal structure` = test {
-    Xml.parse("<a><b>10</b><b>11</b></a>").toString()
+    XmlSeq.parse("<a><b>10</b><b>11</b></a>").toString()
   } returns "<a><b>10</b><b>11</b></a>"
 
   val `Xml parser should parse plain string` = test {
-    Xml.parse("just some text").toString()
+    XmlSeq.parse("just some text").toString()
   } returns "just some text"
 
   val `Xml parser should parse empty tags` = test {
-    Xml.parse("<a></a>").toString()
-  } returns "<a></a>"
+    XmlSeq.parse("<a></a>").toString()
+  } returns "<a/>"
 
 
   //  //TODO: Need to add self closing mode?? or track it some how
   //  val `Xml parser should parse empty self enclosed tag` = test {
-  //    Xml.parse("<a/>").toString()
+  //    XmlSeq.parse("<a/>").toString()
   //  } returns "<a/>" //Found <a></a> but expected <a/>
   //
 
   val `Xml parser should parse strings with self closed tag` = test {
     xml"just some text <ab></ab> yes".toString()
-  } returns "just some text<ab></ab>yes"
+  } returns "just some text<ab/>yes"
 
   val `Xml API should be able to extract data by tag name` = test {
-    Xml.parse(xmlSample).a.c.e.w.toString()
+    XmlSeq.parse(xmlSample).a.*.c.*.e.*.w.*.toString()
   } returns "<k><o>hahaha</o></k><k><o>seven days</o></k>"
 
   val `Xml API should be able to extract data from array/sequence by index` = test {
-    Xml.parse(xmlSample).a.c.e.w.k.o(0).toString()
+    XmlSeq.parse(xmlSample).a().c().e().w().k().o().*.toString()
   } returns "hahaha"
 
 
@@ -95,11 +95,11 @@ object ParsingTests extends TestSuite {
 
 
   val `Parsing XML with encoding attribute` = test {
-    Xml.parse("""<?xml version="1.0" encoding="UTF-8"?><a>wwww</a>""").toString()
+    XmlSeq.parse("""<?xml version="1.0" encoding="UTF-8"?><a>wwww</a>""").toString()
   } returns "<a>wwww</a>"
 
   val `Parsing XML with encoding attribute and some formatting` = test {
-    Xml.parse(
+    XmlSeq.parse(
       """<?xml
         |version="1.0"
         |encoding="UTF-8"
@@ -107,7 +107,7 @@ object ParsingTests extends TestSuite {
   } returns "<a>wwww</a>"
 
   val `Parsing XML with encoding attribute and only string/text` = test {
-    Xml.parse(
+    XmlSeq.parse(
       """<?xml
         |version="1.0"
         |encoding="UTF-8"
@@ -116,8 +116,8 @@ object ParsingTests extends TestSuite {
   } returns "wwww"
 
   val `Get the node by index` = test {
-    Xml.parse("<a><b>1</b></a><a><x>12</x></a>").a(1).toString()
-  } returns "<x>12</x>"
+    xml"<a><b>1</b></a><a><x>12</x></a>".a(1).toString()
+  } returns "<a><x>12</x></a>"
 
   //TODO Throw exception for this case.
   //  val `Get the node by index that doesn't exist` = test {
@@ -125,7 +125,7 @@ object ParsingTests extends TestSuite {
   //  } returns ""
 
   val `Check XmlSeq index` = test {
-    val x = Xml.parse("<a><b>1</b></a>")
+    val x = XmlSeq.parse("<a><b>1</b></a>")
     x.a(0) == x(0)
   } returns false
 
@@ -134,7 +134,7 @@ object ParsingTests extends TestSuite {
   } returns "<x>12</x>"
 
   val `Get rest (*) of xml with text` = test {
-    xml"<a><b>1</b></a><a>12</a>".a(1).toString()
+    xml"<a><b>1</b></a><a>12</a>".a(1).*.toString()
   } returns "12"
 
 }

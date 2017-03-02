@@ -1,7 +1,7 @@
 package xylophone.test
 
 import rapture.test.TestSuite
-import xylophone._, backends.stdlib._
+import xylophone._
 
 import scala.collection.immutable.ListMap
 

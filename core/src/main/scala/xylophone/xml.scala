@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
  *
  *  @param $root  the root of the XML node sequence, from which the path dereferences
  *  @param $path */
-case class XmlSeq($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
+case class XmlSeq($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Xml with Dynamic {
   import Ast._
 
   /** filters the sequence of nodes to only return those with matching tag name and namespace
@@ -98,14 +98,44 @@ object ~: {
   }
 }
 
-object XmlSeq {
+object XmlSeq extends XmlSeqSerializers {
+  /** serializes a value of type [[T]] to an [[XmlSeq]]
+   *
+   *  @param data        the value to serialize
+   *  @param serializer  the implicit serializer for the type [[T]] */
+  def apply[T](data: T)(implicit serializer: XmlSeq.Serializer[T]): XmlSeq =
+    serializer.serialize(data)
+  
+  /** parses a String into an [[XmlSeq]] value
+   *
+   *  @param src   the source value to read from
+   *  @param mode  the mode for mitigating errors
+   *  @param parser  the implicit parser used to interpret the source */
+  def parse(src: String)(implicit mode: Mode[_ <: MethodConstraint],
+      parser: Parser[String]): mode.Wrap[XmlSeq, ParseException] = mode.wrap {
+
+    val wrappedString = wrapXmlByTag(src)
+
+    parser.parse(wrappedString) match {
+      case Success(parsedXml) => XmlSeq(parsedXml.$normalize, Vector())
+      case Failure(_) => mode.exception(ParseException(src))
+    }
+  }
+  
   private[xylophone] val Empty = XmlSeq(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlSeq = XmlSeq(Seq(element), Vector())
   private[xylophone] def apply(root: Seq[Ast.Node]): XmlSeq = XmlSeq(root, Vector())
+  
+  private[this] def wrapXmlByTag(str: String): String =
+    if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
+    else TopOpenTag + str + TopClosingTag
+  
+  private[this] val TopOpenTag = "<self>"
+  private[this] val TopClosingTag = "</self>"
 }
 /** represents a single XML node, specified by a root sequence of elements, and a path into
  *  those elements, pointing to a single node */
-case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Dynamic {
+case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Xml with Dynamic {
   import Ast._
 
   /** selects child nodes of with the tag name, [[tag]] in the namespace, [[namespace]]
@@ -154,6 +184,8 @@ object XmlNode {
     serializer.serialize(data)
 }
 
+trait Xml
+
 object Xml {
 
   private[xylophone] def normalize($root: Seq[Ast.Node],
@@ -181,33 +213,6 @@ object Xml {
         }.flatten
     }
   }
-
-  private[this] val TopOpenTag = "<self>"
-  private[this] val TopClosingTag = "</self>"
-
-  /** parses a String into an [[XmlSeq]] value
-   *
-   *  @param src   the source value to read from
-   *  @param mode  the mode for mitigating errors
-   *  @param parser  the implicit parser used to interpret the source */
-  def parse(src: String)(implicit mode: Mode[_ <: MethodConstraint],
-      parser: Parser[String]): mode.Wrap[XmlSeq, ParseException] = mode.wrap {
-
-    val wrappedString = wrapXmlByTag(src)
-
-    parser.parse(wrappedString) match {
-      case Success(parsedXml) => XmlSeq(parsedXml.$normalize, Vector())
-      case Failure(_) => mode.exception(ParseException(src))
-    }
-  }
-
-  def apply[T](data: T)(implicit serializer: SeqSerializer[T]): XmlSeq =
-    serializer.serialize(data)
-
-  private[this] def wrapXmlByTag(str: String): String =
-    if (str.trim.startsWith("<?xml"))  str.replace("?>", s"?>$TopOpenTag") + TopClosingTag
-    else TopOpenTag + str + TopClosingTag
-
 }
 
 case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {

@@ -1,2 +1,9 @@
-import language.experimental.macros
-package object xylophone extends XmlSeqSerializers with XmlNodeSerializers
+import contextual._
+
+package object xylophone {
+  implicit val implicitXmlStringParser: StdLibXmlStringParser.type = StdLibXmlStringParser
+
+  implicit class XmlStringContext(stringContext: StringContext) {
+    val xml = Prefix(XmlInterpolator, stringContext)
+  }
+}

@@ -1,4 +1,4 @@
-package xylophone.backends.stdlib
+package xylophone
 
 import xylophone._
 import contextual._
@@ -7,16 +7,13 @@ import contextual._
  *  substitutions within it. */
 object XmlInterpolator extends Interpolator {
 
-  /** defines how [[String]]s may be embedded in different contexts */
-  implicit val embedStrings = XmlInterpolator.embed[String](
-    Case(AttributeEquals, TagBody) { s => StringLike('"'+s+'"') },
-    Case(AttributeValue, AttributeValue) { s => StringLike(s) },
-    Case(Body, Body) { s => StringLike(s) }
-  )
-
   /** defines how [[XmlSeq]]s may be embedded in [[Body]] context */
   implicit val embedXmlSeqs = XmlInterpolator.embed[XmlSeq](
     Case(Body, Body) { x => XmlLike(x) }
+  )
+
+  implicit def embedXmlSeqConvertibles[T: XmlSeq.Serializer] = XmlInterpolator.embed[T](
+    Case(Body, Body) { x => XmlLike(implicitly[XmlSeq.Serializer[T]].serialize(x)) }
   )
 
   /** defines how [[XmlNode]]s may be embedded in [[Body]] context */
@@ -289,7 +286,7 @@ object XmlInterpolator extends Interpolator {
   /** evaluates the string using the actual substituted values by producing a single string and
    *  parsing it with an XML parser */
   def evaluate(interpolation: RuntimeInterpolation): XmlSeq =
-    Xml.parse(interpolation.parts.foldLeft("") {
+    XmlSeq.parse(interpolation.parts.foldLeft("") {
       case (acc, Literal(_, literal)) => acc+literal
       case (acc, Substitution(_, StringLike(string))) => acc+string
       case (acc, Substitution(_, XmlLike(xml))) => acc+xml
