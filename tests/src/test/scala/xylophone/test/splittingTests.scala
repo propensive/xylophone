@@ -3,8 +3,6 @@ package xylophone.test
 import rapture.test.TestSuite
 import xylophone._
 
-import scala.collection.immutable.ListMap
-
 object SplittingTests extends TestSuite {
 
   val seq1 = xml"<a/><b/><c/><d/><e/>"

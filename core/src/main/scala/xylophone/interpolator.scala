@@ -1,19 +1,21 @@
 package xylophone
 
-import xylophone._
 import contextual._
 
 /** implements the parsing logic for interpreting an `xml""` interpolated string, and the
  *  substitutions within it. */
-object XmlInterpolator extends Interpolator {
+object XmlInterpolator extends Interpolator with XmlInterpolator_1 {
 
   /** defines how [[XmlSeq]]s may be embedded in [[Body]] context */
   implicit val embedXmlSeqs = XmlInterpolator.embed[XmlSeq](
     Case(Body, Body) { x => XmlLike(x) }
   )
 
-  implicit def embedXmlSeqConvertibles[T: XmlSeq.Serializer] = XmlInterpolator.embed[T](
-    Case(Body, Body) { x => XmlLike(implicitly[XmlSeq.Serializer[T]].serialize(x)) }
+  /** defines how [[String]]s may be embedded in different contexts */
+  implicit val embedStrings = XmlInterpolator.embed[String](
+    Case(AttributeEquals, TagBody) { s => StringLike('"'+s+'"') },
+    Case(AttributeValue, AttributeValue) { s => StringLike(s) },
+    Case(Body, Body) { s => StringLike(s) }
   )
 
   /** defines how [[XmlNode]]s may be embedded in [[Body]] context */
@@ -174,7 +176,7 @@ object XmlInterpolator extends Interpolator {
      *  The implementation makes heavy use of simplified methods defined on [[ParseState]]
      *  which construct an updated [[ParseState]] for each character. */
     def parseLiteral(state: ParseState, string: String): ParseState = string.foldLeft(state) {
-      case (state@ParseState(_, _, _, _, _, _), char) => state.context match {
+      case (state, char) => state.context match {
         
         case TagName            => char match {
           case TagChar()          => state(char)
@@ -212,7 +214,7 @@ object XmlInterpolator extends Interpolator {
         case AttributeEquals    => char match {
           case WhitespaceChar()   => state()
           case '"'                => state(AttributeValue)
-          case _                  => state.abort("expected '='")
+          case _                  => state.abort("expected opening quote")
         }
         
         case AttributeValue     => char match {
@@ -242,6 +244,7 @@ object XmlInterpolator extends Interpolator {
         
         case BodyEntity       => char match {
           case ';'                => state()
+          case TagChar()          => state()
           case _                  => state.abort("not a valid entity name character")
         }
 
@@ -284,7 +287,10 @@ object XmlInterpolator extends Interpolator {
   }
 
   /** evaluates the string using the actual substituted values by producing a single string and
-   *  parsing it with an XML parser */
+   *  parsing it with an XML parser
+   *
+   *  @param interpolation  the runtime interpolation, provided by Contextual
+   *  @return the [[XmlSeq]] resulting from parsing the contents of the interpolated string */
   def evaluate(interpolation: RuntimeInterpolation): XmlSeq =
     XmlSeq.parse(interpolation.parts.foldLeft("") {
       case (acc, Literal(_, literal)) => acc+literal
@@ -292,4 +298,13 @@ object XmlInterpolator extends Interpolator {
       case (acc, Substitution(_, XmlLike(xml))) => acc+xml
     })
 
+}
+
+/** provides lower-priority implicits */
+trait XmlInterpolator_1 { this: XmlInterpolator.type =>
+
+  /** serializes anything that is convertible to `XmlSeq` */
+  implicit def embedXmlSeqConvertibles[T: XmlSeq.Serializer] = XmlInterpolator.embed[T](
+    Case(Body, Body) { x => XmlLike(implicitly[XmlSeq.Serializer[T]].serialize(x)) }
+  )
 }

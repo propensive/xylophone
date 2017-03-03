@@ -1,6 +1,6 @@
 package xylophone.test
 
-import rapture.test.{Programme, TestSuite}
+import rapture.test.TestSuite
 import xylophone._
 
 object ParsingTests extends TestSuite {

@@ -1,6 +1,6 @@
 package xylophone
 
-import xylophone._, Ast._
+import Ast._
 
 import scala.util.Try
 import scala.xml.{Node => ScalaNode, Text => ScalaText, _}

@@ -16,7 +16,9 @@ case class WrapTag[T](name: String)
 @implicitNotFound("Cannot find SeqTag typeclass for ${T}")
 case class SeqTag[T](name: String)
 
+/** companion object to SeqTag, providing a default implicit */
 object SeqTag {
+  
   /** implicit [[SeqTag]] instance which generates a surrounding tag name from the class name
    */
   implicit def defaultSeqTag[T: ClassTag, F[_]]: SeqTag[F[T]] =
@@ -83,6 +85,7 @@ trait XmlSeqSerializers extends XmlSeqSerializers_1 {
   implicit def noneSerializer: Serializer[None.type] = x => XmlSeq(Text(""))
 }
 
+/** lower-priority serializer implicits */
 trait XmlSeqSerializers_1 { this: XmlSeqSerializers =>
 
   /** serializes [[Option]]s to their value in the [[Some]] case, or an empty sequence
