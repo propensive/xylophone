@@ -97,12 +97,12 @@ object ~: {
   }
 }
 
-object XmlSeq extends XmlSeqSerializers {
+object XmlSeq {
   /** serializes a value of type [[T]] to an [[XmlSeq]]
    *
    *  @param data        the value to serialize
    *  @param serializer  the implicit serializer for the type [[T]] */
-  def apply[T](data: T)(implicit serializer: XmlSeq.Serializer[T]): XmlSeq =
+  def apply[T](data: T)(implicit serializer: SeqSerializer[T]): XmlSeq =
     serializer.serialize(data)
   
   /** parses a String into an [[XmlSeq]] value

@@ -2,23 +2,11 @@ package xylophone.test
 
 import rapture.test.TestSuite
 import xylophone._
-import scala.collection.immutable.ListMap
 
 object SerializationTests extends TestSuite {
   
   case class Address(id: Int, users: List[User])
   case class User(name: String)
-
-  implicit val userSerializer: XmlSeq.Serializer[User] = (user: User) => {
-    XmlSeq.Serializer.fromMap(ListMap("name" -> XmlSeq.stringSerializer.serialize(user.name)))
-  }
-
-  implicit val serializer: XmlSeq.Serializer[Address] = (address: Address) => {
-    XmlSeq.Serializer.fromMap(ListMap(
-      "id" ->  implicitly[XmlSeq.Serializer[Int]].serialize(address.id),
-      "users" -> XmlSeq(implicitly[XmlSeq.Serializer[List[User]]].serialize(address.users).$root)
-    ))
-  }
 
   val `Should serialize custom case classes` = test {
     XmlSeq(Address(1, List(User("Alice"), User("Dave")))).toString()
@@ -69,7 +57,7 @@ object SerializationTests extends TestSuite {
   val `Test implicit String serializer` = test(XmlSeq("hello").toString()).returns("hello")
   val `Test implicit BigDecimal serializer` = test(XmlSeq(BigDecimal(1212)).toString()).returns("1212")
   val `Test implicit BigInt serializer` = test(XmlSeq(BigInt(2323)).toString()).returns("2323")
-  val `Test implicit Some(...) serializer` = test(XmlSeq(Some("abc")).toString()).returns("abc")
+  val `Test implicit Some(...) serializer` = test(XmlSeq[Option[String]](Some("abc")).toString()).returns("abc")
   val `Test implicit None serializer` = test(XmlSeq(None).toString()).returns("")
 
 }
