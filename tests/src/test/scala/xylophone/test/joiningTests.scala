@@ -3,8 +3,6 @@ package xylophone.test
 import rapture.test.TestSuite
 import xylophone._
 
-import scala.collection.immutable.ListMap
-
 object JoiningTests extends TestSuite {
 
   val seq: XmlSeq = xml"<user><name>Fred</name><age>5</age></user>"

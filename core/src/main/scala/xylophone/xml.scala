@@ -1,7 +1,6 @@
 package xylophone
 
 import rapture.core.{MethodConstraint, Mode}
-import xylophone.Ast.DefaultNamespace
 
 import language.dynamics
 import scala.util.{Failure, Success}

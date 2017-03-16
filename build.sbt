@@ -46,7 +46,7 @@ lazy val buildSettings = Seq(
     "-Ywarn-adapted-args",
     "-unchecked", // Enable additional warnings where generated code depends on assumptions.
     "-Xfatal-warnings", // Fail the compilation if there are any warnings.
-    //"-Ywarn-unused-import", //Warn when imports are unused
+    "-Ywarn-unused-import", //Warn when imports are unused
     "-Ywarn-unused",  // Warn when local and private vals, vars, defs, and types are unused.
     "-Yno-adapted-args", // Warn if an argument list is modified to match the receiver.
     "-Ywarn-nullary-override", // Warn when non-nullary overrides nullary, e.g. def foo() over def foo.
