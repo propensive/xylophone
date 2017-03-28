@@ -5,18 +5,20 @@ import macrocompat.bundle
 import scala.reflect.macros._
 
 @bundle
-private[xylophone] class XmlMacros(val c: whitebox.Context) {
+private class XmlMacros(val c: whitebox.Context) {
 
   import c.universe._
 
-  def serializerMacro[T: c.WeakTypeTag]: c.Expr[SeqSerializer[T]] = {
-    def generateSerializerForCaseClass(serializer: c.universe.Type): c.Expr[SeqSerializer[T]] = {
-      val decls = getClassFields(weakTypeOf[T]).map(field => findAndCollectSerializerForField(serializer, field))
-      c.Expr[SeqSerializer[T]](
+  def serializerWrapperMacro[T](implicit T: c.WeakTypeTag[T]): c.Expr[SeqSerializerWrapper[T]] = {
+    def generateSerializerForCaseClass(serializer: c.universe.Type): c.Expr[SeqSerializerWrapper[T]] = {
+      val decls = getClassFields(weakTypeOf[T]).map(field => findAndCollectSerializerForField(serializer, field)(T))
+      c.Expr[SeqSerializerWrapper[T]](
         q"""
-         new _root_.xylophone.SeqSerializer[${weakTypeOf[T]}] {
-             def serialize(obj: ${weakTypeOf[T]}): XmlSeq =
-                   _root_.xylophone.SeqSerializer.fromMap(_root_.scala.collection.immutable.ListMap(${decls.toSeq: _*}))
+         new _root_.xylophone.SeqSerializerWrapper[${weakTypeOf[T]}] {
+            def serializer: SeqSerializer[${weakTypeOf[T]}] = new _root_.xylophone.SeqSerializer[${weakTypeOf[T]}] {
+              def serialize(obj: ${weakTypeOf[T]}): XmlSeq =
+                    _root_.xylophone.SeqSerializer.fromMap(_root_.scala.collection.immutable.ListMap(${decls.toSeq: _*}))
+              }
          }
        """)
     }

@@ -3,7 +3,6 @@ package xylophone
 import rapture.core.{MethodConstraint, Mode}
 
 import language.dynamics
-import language.experimental.macros
 import scala.util.{Failure, Success}
 
 /** represents a sequence of XML nodes, specified as a root sequence of AST nodes, and a path
@@ -188,7 +187,7 @@ trait Xml
 
 object Xml {
 
-  def serializer[T]: SeqSerializer[T] = macro XmlMacros.serializerMacro[T]
+  def serializer[T](implicit t: SeqSerializerWrapper[T]): SeqSerializer[T] = t.serializer
 
   private[xylophone] def normalize($root: Seq[Ast.Node],
                                    $path: Vector[Ast.Path]): Seq[Ast.Node] = {

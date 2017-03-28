@@ -14,21 +14,20 @@ case class WrapTag[T](name: String)
 
 /** typeclass interface for defining the name of the tag to be used to surround sequences */
 @implicitNotFound("Cannot find SeqTag typeclass for ${T}")
-case class SeqTag[T](name: String)
+case class SeqTag[+T](name: String)
 
 /** companion object to SeqTag, providing a default implicit */
 object SeqTag {
-  
+
   /** implicit [[SeqTag]] instance which generates a surrounding tag name from the class name
    */
-  implicit def defaultSeqTag[T: ClassTag, F[_]]: SeqTag[F[T]] =
-    SeqTag(implicitly[ClassTag[T]].runtimeClass.getSimpleName.toLowerCase())
+  implicit def defaultSeqTag[T: ClassTag, F[t] <: Traversable[t]]: SeqTag[F[T]] = SeqTag("item")
 }
 
 /** SAM typeclass interface for serialization to [[XmlSeq]]s */
 @implicitNotFound("Cannot serialize type ${T} to XmlSeq. Please provide an implicit "+
-  "Serializer of type ${T} to XmlSeq")
-trait SeqSerializer[T] { serializer =>
+"SeqSerializer of type ${T} to XmlSeq")
+trait SeqSerializer[-T] { serializer =>
 
   /** abstract method to specify the conversion to [[XmlSeq]] */
   def serialize(t: T): XmlSeq
@@ -37,20 +36,22 @@ trait SeqSerializer[T] { serializer =>
     *  the value prior to serialization */
   def contramap[T2](fn: T2 => T): SeqSerializer[T2] = t => serializer.serialize(fn(t))
 
-  def orElse[T2 >: T](fallbackSerializer: SeqSerializer[_ <: T2]): SeqSerializer[T2] = {
-    new SeqSerializer[T2] {
-      override def serialize(t: T2): XmlSeq = {
-        try {
-          serializer.serialize(t)
-        } catch {
-          case e: Exception =>
-            println(e)
-            fallbackSerializer.serialize(t)
-        }
+  def orElse[TS <: T, T2 >: TS](fallbackSerializer: => SeqSerializer[T2]): SeqSerializer[TS] = new SeqSerializer[TS] {
+    def serialize(t: TS): XmlSeq = {
+      try {
+        serializer.serialize(t)
+      } catch {
+        case e: Exception =>
+          fallbackSerializer.serialize(t)
       }
     }
   }
+}
 
+@implicitNotFound("Cannot serialize type ${T} to XmlSeq. Please provide an implicit "+
+  "SeqSerializer of type ${T} to XmlSeq")
+trait SeqSerializerWrapper[T] {
+  def serializer: SeqSerializer[T]
 }
 
 /** companion object to the [[SeqSerializer]] typeclass interface */
@@ -96,8 +97,6 @@ trait XmlSeqSerializers extends XmlSeqSerializers_1 {
   /** serializes [[BigInt]]s to XML text */
   implicit def bigIntSerializer: SeqSerializer[BigInt] = x => XmlSeq(Text(x.toString))
 
-  /** serializes [[None]]s to XML text */
-  implicit def noneSerializer: SeqSerializer[None.type] = _ => XmlSeq(Text(""))
 }
 
 /** lower-priority serializer implicits */
@@ -110,23 +109,38 @@ trait XmlSeqSerializers_1 { this: XmlSeqSerializers =>
 
   /** serializes any traversible from the Scala collections library to an XML sequence,
    *  provided the element type can be serialized */
-  implicit def traversableSerializer[Type, S[T] <: Traversable[T]](
-                                                                    implicit serializer: SeqSerializer[Type],
-                                                                    tag: SeqTag[S[Type]],
-                                                                    namespace: Namespace): SeqSerializer[S[Type]] =
+  implicit def traversableSerializer[Type](implicit serializer: SeqSerializer[Type],
+                                           tag: SeqTag[Traversable[Type]],
+                                           namespace: Namespace): SeqSerializer[Traversable[Type]] =
     _.foldLeft[XmlSeq](XmlSeq.Empty) { (xml, el) =>
       val elements = serializer.serialize(el).$root
       val node = Element(Name(namespace, tag.name), Map(), elements)
       XmlSeq(xml.$root :+ node)
     }
 
-  implicit def xmlSerializerMacro[T]: SeqSerializer[T] = macro XmlMacros.serializerMacro[T]
+  /** serializes arrays from the Scala collections library to an XML sequence,
+    *  provided the element type can be serialized */
+  implicit def arraySerializer[T: ClassTag](implicit serializer: SeqSerializer[T],
+                                             tag: SeqTag[Array[T]],
+                                             namespace: Namespace): SeqSerializer[Array[T]] = {
+    _.foldLeft[XmlSeq](XmlSeq.Empty) { (xml, el) =>
+      val elements = serializer.serialize(el).$root
+      val node = Element(Name(namespace, tag.name), Map(), elements)
+      XmlSeq(xml.$root :+ node)
+    }
+  }
+
+
+
+  implicit def xmlSerializerMacro2[T]: SeqSerializerWrapper[T] = macro XmlMacros.serializerWrapperMacro[T]
+
+  implicit def xmlSerializerMacro[T](implicit wrapper: SeqSerializerWrapper[T]): SeqSerializer[T] = wrapper.serializer
 }
 
 /** SAM typeclass interface for serialization to [[XmlNode]]s */
 @implicitNotFound("Cannot serialize type ${T} to XmlNode. Please provide an implicit "+
   "Serializer of type ${T} to XmlNode.")
-trait NodeSerializer[T] { nodeSerializer =>
+trait NodeSerializer[-T] { nodeSerializer =>
 
   /** abstract method to specify the conversion to [[XmlNode]] */
   def serialize(t: T): XmlNode
