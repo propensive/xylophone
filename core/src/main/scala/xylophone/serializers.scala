@@ -36,6 +36,21 @@ trait SeqSerializer[T] { serializer =>
   /** constructs a new [[SeqSerializer]] from this, which pre-applies the [[fn]] function to
     *  the value prior to serialization */
   def contramap[T2](fn: T2 => T): SeqSerializer[T2] = t => serializer.serialize(fn(t))
+
+  def orElse[T2 >: T](fallbackSerializer: SeqSerializer[_ <: T2]): SeqSerializer[T2] = {
+    new SeqSerializer[T2] {
+      override def serialize(t: T2): XmlSeq = {
+        try {
+          serializer.serialize(t)
+        } catch {
+          case e: Exception =>
+            println(e)
+            fallbackSerializer.serialize(t)
+        }
+      }
+    }
+  }
+
 }
 
 /** companion object to the [[SeqSerializer]] typeclass interface */
