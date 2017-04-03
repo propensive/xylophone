@@ -304,7 +304,7 @@ object XmlInterpolator extends Interpolator with XmlInterpolator_1 {
 trait XmlInterpolator_1 { this: XmlInterpolator.type =>
 
   /** serializes anything that is convertible to `XmlSeq` */
-  implicit def embedXmlSeqConvertibles[T: XmlSeq.Serializer] = XmlInterpolator.embed[T](
-    Case(Body, Body) { x => XmlLike(implicitly[XmlSeq.Serializer[T]].serialize(x)) }
+  implicit def embedXmlSeqConvertibles[T: SeqSerializer] = XmlInterpolator.embed[T](
+    Case(Body, Body) { x => XmlLike(implicitly[SeqSerializer[T]].serialize(x)) }
   )
 }
