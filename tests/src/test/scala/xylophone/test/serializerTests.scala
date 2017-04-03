@@ -3,40 +3,27 @@ package xylophone.test
 import rapture.test.TestSuite
 import xylophone._
 
-import scala.collection.immutable.ListMap
-
 object SerializationTests extends TestSuite {
   
   case class Address(id: Int, users: List[User])
   case class User(name: String)
 
-  implicit val userSerializer: XmlSeq.Serializer[User] = (user: User) => {
-    XmlSeq.Serializer.fromMap(ListMap("name" -> XmlSeq.stringSerializer.serialize(user.name)))
-  }
-
-  implicit val serializer: XmlSeq.Serializer[Address] = (address: Address) => {
-    XmlSeq.Serializer.fromMap(ListMap(
-      "id" ->  implicitly[XmlSeq.Serializer[Int]].serialize(address.id),
-      "users" -> XmlSeq(implicitly[XmlSeq.Serializer[List[User]]].serialize(address.users).$root)
-    ))
-  }
-
   val `Should serialize custom case classes` = test {
     XmlSeq(Address(1, List(User("Alice"), User("Dave")))).toString()
-  } returns "<id>1</id><users><user><name>Alice</name></user><user><name>Dave</name></user></users>"
+  } returns "<id>1</id><users><item><name>Alice</name></item><item><name>Dave</name></item></users>"
 
   val `Should serialize list of custom case classes` = test {
     XmlSeq(List(Address(1, List(User("Alice"), User("Dave"))))).toString()
-  } returns "<address><id>1</id><users><user><name>Alice</name></user><user><name>Dave</name></user></users></address>"
+  } returns "<item><id>1</id><users><item><name>Alice</name></item><item><name>Dave</name></item></users></item>"
 
   val `Should serialize list of custom case classes with custom seq type tag` = test {
     implicit val myTag = SeqTag[List[Address]]("test")
     XmlSeq(List(Address(1, List(User("Alice"), User("Dave"))))).toString()
-  } returns "<test><id>1</id><users><user><name>Alice</name></user><user><name>Dave</name></user></users></test>"
+  } returns "<test><id>1</id><users><item><name>Alice</name></item><item><name>Dave</name></item></users></test>"
 
   val `Should serialize list with default type` = test {
     XmlSeq(List(1,2,3,4)).toString()
-  } returns "<int>1</int><int>2</int><int>3</int><int>4</int>"
+  } returns "<item>1</item><item>2</item><item>3</item><item>4</item>"
 
   val `Should serialize list with custom seq type tag` = test {
     implicit val myTag = SeqTag[List[Int]]("test")
@@ -52,13 +39,22 @@ object SerializationTests extends TestSuite {
   val `Serialize complex case class by XmlNode` = test {
     implicit val userWrapTag: WrapTag[Address] = WrapTag("address")
     XmlNode(Address(1, List(User("Alice"), User("Dave")))).toString()
-  } returns "<address><id>1</id><users><user><name>Alice</name></user><user><name>Dave</name></user></users></address>"
+  } returns "<address><id>1</id><users><item><name>Alice</name></item><item><name>Dave</name></item></users></address>"
 
   val `Serialize list of case classes by XmlNode` = test {
     implicit val userSeqTag: SeqTag[List[User]] = SeqTag("user")
     implicit val userWrapTag: WrapTag[List[User]] = WrapTag("users")
     XmlNode(List(User("Alice"), User("Dave"))).toString()
   } returns "<users><user><name>Alice</name></user><user><name>Dave</name></user></users>"
+
+
+
+  val `Serialize array of case classes by XmlNode` = test {
+    implicit val userSeqTag: SeqTag[Array[User]] = SeqTag("abc")
+    implicit val userWrapTag: WrapTag[Array[User]] = WrapTag("users")
+    XmlNode(Array(User("Alice"), User("Dave"))).toString()
+  } returns "<users><abc><name>Alice</name></abc><abc><name>Dave</name></abc></users>"
+
 
   val `Test implicit Boolean serializer` = test(XmlSeq(false).toString()).returns("false")
   val `Test implicit Byte serializer` = test(XmlSeq(1.toByte).toString()).returns("1")

@@ -1,6 +1,6 @@
 import contextual._
 
-package object xylophone {
+package object xylophone extends XmlSeqSerializers with XmlNodeSerializers {
   
   implicit val implicitXmlStringParser: StdLibXmlStringParser.type = StdLibXmlStringParser
 

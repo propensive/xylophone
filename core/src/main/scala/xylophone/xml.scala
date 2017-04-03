@@ -97,12 +97,12 @@ object ~: {
   }
 }
 
-object XmlSeq extends XmlSeqSerializers {
+object XmlSeq {
   /** serializes a value of type [[T]] to an [[XmlSeq]]
    *
    *  @param data        the value to serialize
    *  @param serializer  the implicit serializer for the type [[T]] */
-  def apply[T](data: T)(implicit serializer: XmlSeq.Serializer[T]): XmlSeq =
+  def apply[T](data: T)(implicit serializer: SeqSerializer[T]): XmlSeq =
     serializer.serialize(data)
   
   /** parses a String into an [[XmlSeq]] value
@@ -132,7 +132,6 @@ object XmlSeq extends XmlSeqSerializers {
   private[this] val TopOpenTag = "<self>"
   private[this] val TopClosingTag = "</self>"
 }
-
 /** represents a single XML node, specified by a root sequence of elements, and a path into
  *  those elements, pointing to a single node */
 case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Xml with Dynamic {
@@ -170,11 +169,11 @@ case class XmlNode($root: Seq[Ast.Node], $path: Vector[Ast.Path]) extends Xml wi
   private[xylophone] def $normalize: Option[Node] = Xml.normalize($root, $path).headOption
 }
 
-object XmlNode extends XmlNodeSerializers {
+object XmlNode {
 
   private[xylophone] val Empty = XmlNode(Nil, Vector())
   private[xylophone] def apply(element: Ast.Node): XmlNode = XmlNode(Seq(element), Vector())
-  private[xylophone]  def apply(root: Seq[Ast.Node]): XmlNode = XmlNode(root, Vector())
+  private[xylophone] def apply(root: Seq[Ast.Node]): XmlNode = XmlNode(root, Vector())
 
   /** creates a new [[XmlNode]], serializing the value [[data]].
    *
@@ -187,6 +186,8 @@ object XmlNode extends XmlNodeSerializers {
 trait Xml
 
 object Xml {
+
+  def serializer[T](implicit t: SeqSerializerWrapper[T]): SeqSerializer[T] = t.serializer
 
   private[xylophone] def normalize($root: Seq[Ast.Node],
                                    $path: Vector[Ast.Path]): Seq[Ast.Node] = {
@@ -213,7 +214,6 @@ object Xml {
         }.flatten
     }
   }
-
 }
 
 case class XmlAttribute(xmlNode: XmlNode, attributeName: Ast.Name) {
