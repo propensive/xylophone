@@ -4,9 +4,5 @@
 
 # Xylophone
 
-An XML library for Scala.
-
-Please see the [propensive.com](http://propensive.com/) website for more information.
-
-
+A work-in progress XML library for Scala.
 
