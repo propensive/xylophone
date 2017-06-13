@@ -87,6 +87,11 @@ object ParsingTests extends TestSuite {
     xml"""<z:Attachment rdf:about="#item_1" rdf:id="10">xxxxx</z:Attachment>""".toString()
   } returns """<z:Attachment rdf:id="10" rdf:about="#item_1">xxxxx</z:Attachment>"""
 
+  val `Parse attribute` = test {
+    val str = "Hello world"
+    xml"""<foo attribute=$str>Hello world</foo>""".toString()
+  } returns """<foo attribute="Hello world">Hello world</foo>"""
+
 
   ////TODO: Need to support xmlns
   //  val `Parsing XML with attributes and namespaces and xmlns` = test {

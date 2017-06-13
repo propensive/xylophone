@@ -6,32 +6,36 @@ import contextual._
  *  substitutions within it. */
 object XmlInterpolator extends Interpolator with XmlInterpolator_1 {
 
+  type Output = XmlSeq
+
+  implicit val transitionAttributeEquals = XmlInterpolator.holeTransition[Raw](AttributeEquals, TagBody)
+
   /** defines how [[XmlSeq]]s may be embedded in [[Body]] context */
   implicit val embedXmlSeqs = XmlInterpolator.embed[XmlSeq](
-    Case(Body, Body) { x => XmlLike(x) }
+    on(Body) { x => Structured(x) }
   )
 
   /** defines how [[String]]s may be embedded in different contexts */
   implicit val embedStrings = XmlInterpolator.embed[String](
-    Case(AttributeEquals, TagBody) { s => StringLike('"'+s+'"') },
-    Case(AttributeValue, AttributeValue) { s => StringLike(s) },
-    Case(Body, Body) { s => StringLike(s) }
+    on(AttributeEquals) { s => Raw('"'+s+'"') },
+    on(AttributeValue) { s => Raw(s) },
+    on(Body) { s => Raw(s) }
   )
 
   /** defines how [[XmlNode]]s may be embedded in [[Body]] context */
   implicit val embedXmlNodes = XmlInterpolator.embed[XmlNode](
-    Case(Body, Body) { x => XmlLike(XmlSeq(x.$root, x.$path)) }
+    on(Body) { x => Structured(XmlSeq(x.$root, x.$path)) }
   )
 
   /** defines how [[Pairs]]s of [[String]]s may be embedded as attributes in a tag */
   implicit val embedPairs = XmlInterpolator.embed[(String, String)](
-    Case(TagBody, TagBody) { p => StringLike(s""" ${p._1}="${p._2}" """) }
+    on(TagBody) { p => Raw(s""" ${p._1}="${p._2}" """) }
   )
   
   /** defines how a [[Map[String, String]]] may be embedded as attributes in a tag */
   implicit val embedStringMap = XmlInterpolator.embed[Map[String, String]](
-    Case(TagBody, TagBody) { m =>
-      StringLike(m.map { case (k, v) => k+"="+'"'+v+'"' }.mkString(" ", " ", " ")) }
+    on(TagBody) { m =>
+      Raw(m.map { case (k, v) => k+"="+'"'+v+'"' }.mkString(" ", " ", " ")) }
   )
 
   /** the type to which valid substitutions should be converted
@@ -42,8 +46,8 @@ object XmlInterpolator extends Interpolator with XmlInterpolator_1 {
    *  interpolator. This simple ADT allows them to be presented either as string-like or
    *  XML-like types. */
   sealed trait Input
-  case class StringLike(str: String) extends Input
-  case class XmlLike(xml: XmlSeq) extends Input
+  case class Raw(str: String) extends Input
+  case class Structured(xml: XmlSeq) extends Input
 
   /** provides a type-level representation of the context of any character of the parsed parts
    *  of the interpolated string. */
@@ -294,8 +298,8 @@ object XmlInterpolator extends Interpolator with XmlInterpolator_1 {
   def evaluate(interpolation: RuntimeInterpolation): XmlSeq =
     XmlSeq.parse(interpolation.parts.foldLeft("") {
       case (acc, Literal(_, literal)) => acc+literal
-      case (acc, Substitution(_, StringLike(string))) => acc+string
-      case (acc, Substitution(_, XmlLike(xml))) => acc+xml
+      case (acc, Substitution(_, Raw(string))) => acc+string
+      case (acc, Substitution(_, Structured(xml))) => acc+xml
     })
 
 }
@@ -305,6 +309,6 @@ trait XmlInterpolator_1 { this: XmlInterpolator.type =>
 
   /** serializes anything that is convertible to `XmlSeq` */
   implicit def embedXmlSeqConvertibles[T: SeqSerializer] = XmlInterpolator.embed[T](
-    Case(Body, Body) { x => XmlLike(implicitly[SeqSerializer[T]].serialize(x)) }
+    on(Body) { x => Structured(implicitly[SeqSerializer[T]].serialize(x)) }
   )
 }
