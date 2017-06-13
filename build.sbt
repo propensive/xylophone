@@ -3,7 +3,8 @@ import ReleaseTransformations._
 
 val versions = new {
   val rapture = "2.0.0-M8"
-  val contextual = "1.0.1"
+  val contextual = "2.0.0"
+  val magnolia = "0.1.0"
   val scalaMacros = "2.1.0"
   val macroCompat = "1.1.1"
 }
@@ -16,7 +17,8 @@ lazy val core = project
   .settings(moduleName := "xylophone")
   .settings(libraryDependencies ++= Seq(
     "com.propensive" %% "rapture-core" % versions.rapture,
-    "com.propensive" %% "contextual" % versions.contextual
+    "com.propensive" %% "contextual" % versions.contextual,
+    "com.propensive" %% "magnolia" % versions.magnolia
   ))
 
 lazy val tests = project
