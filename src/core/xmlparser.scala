@@ -58,7 +58,7 @@ object XmlInterpolation:
 
     def rollback(difference: Int): ParseState = copy(offset = offset - difference)
     
-    def pop: ParseState throws InterpolationError = stack.headOption match
+    def pop: ParseState = stack.headOption match
       case Some(tag) if tag.name == current =>
         copy(stack = stack.tail)
       

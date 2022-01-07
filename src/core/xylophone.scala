@@ -38,9 +38,9 @@ sealed trait Xml:
   def root: Ast.Root
   
   @targetName("add")
-  infix def +(other: Xml): Doc throws XmlAccessError
+  infix def +(other: Xml): Doc
 
-  def string(using XmlPrinter[Text]): Text throws XmlAccessError =
+  def string(using XmlPrinter[Text]): Text =
     summon[XmlPrinter[Text]].print(Doc(Ast.Root(Xml.normalize(this)*)))
 
 type XmlPath = List[Text | Int | Unit]
@@ -63,7 +63,7 @@ object Xml:
     case _          => throw Impossible("should never match")
   }.join
 
-  def parse(content: Text): Doc throws XmlParseError =
+  def parse(content: Text): Doc =
     import org.w3c.dom as owd, owd.Node.*
     import org.xml.sax as oxs
     import javax.xml.parsers.*
@@ -122,7 +122,7 @@ object Xml:
       case elem@Ast.Element(_, _, _, _) => Doc(Ast.Root(elem))
       case _                            => throw Impossible("xylophone: malformed XML")
 
-  def normalize(xml: Xml): Seq[Ast] throws XmlAccessError =
+  def normalize(xml: Xml): Seq[Ast] =
     def recur(path: XmlPath, current: Seq[Ast]): Seq[Ast] = path match
       case Nil =>
         current
@@ -166,10 +166,10 @@ extends Xml, Dynamic:
   def * : Fragment = Fragment((), head :: path, root)
   
   @targetName("add")
-  infix def +(other: Xml): Doc throws XmlAccessError =
+  infix def +(other: Xml): Doc =
     Doc(Ast.Root(Xml.normalize(this) ++ Xml.normalize(other)*))
   
-  def as[T](using reader: XmlReader[T]): T throws XmlAccessError | XmlReadError = apply().as[T]
+  def as[T](using reader: XmlReader[T]): T = apply().as[T]
 
 case class XmlNode(head: Int, path: XmlPath, root: Ast.Root) extends Xml, Dynamic:
   def selectDynamic(tagName: String): Fragment = Fragment(Text(tagName), head :: path, root)
@@ -181,10 +181,10 @@ case class XmlNode(head: Int, path: XmlPath, root: Ast.Root) extends Xml, Dynami
   def * : Fragment = Fragment((), head :: path, root)
   
   @targetName("add")
-  infix def +(other: Xml): Doc throws XmlAccessError =
+  infix def +(other: Xml): Doc =
     Doc(Ast.Root(Xml.normalize(this) ++ Xml.normalize(other)*))
 
-  def as[T: XmlReader]: T throws XmlReadError | XmlAccessError =
+  def as[T: XmlReader]: T =
     summon[XmlReader[T]].read(Xml.normalize(this)).getOrElse(throw XmlReadError())
 
 case class Doc(root: Ast.Root) extends Xml, Dynamic:
@@ -196,14 +196,14 @@ case class Doc(root: Ast.Root) extends Xml, Dynamic:
   def * : Fragment = Fragment((), Nil, root)
   
   @targetName("add")
-  infix def +(other: Xml): Doc throws XmlAccessError =
+  infix def +(other: Xml): Doc =
     Doc(Ast.Root(Xml.normalize(this) ++ Xml.normalize(other)*))
 
-  def as[T: XmlReader]: T throws XmlAccessError | XmlReadError =
+  def as[T: XmlReader]: T =
     summon[XmlReader[T]].read(Xml.normalize(this)).getOrElse(throw XmlReadError())
 
 case class Attribute(node: XmlNode, attribute: Text):
-  def as[T: XmlReader]: T throws XmlReadError | XmlAccessError =
+  def as[T: XmlReader]: T =
     val attributes = Xml.normalize(node).headOption match
       case Some(Ast.Element(_, _, attributes, _)) => attributes
       case _                                      => throw XmlReadError()
